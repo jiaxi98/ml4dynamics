@@ -24,6 +24,7 @@ reference:
 1. https://arxiv.org/pdf/1307.8197
 """
 
+import jax
 import jax.numpy as jnp
 
 jax.config.update("jax_enable_x64", True)

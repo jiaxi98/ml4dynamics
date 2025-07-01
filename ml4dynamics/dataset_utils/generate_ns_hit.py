@@ -61,7 +61,7 @@ def main():
     rng, key = random.split(rng)
     i = i + 1
     print('generating the {}-th trajectory...'.format(j))
-    init_cond = "gaussian_process" # gaussian_process, spec_random, real_random, taylor_green
+    init_cond = "spec_random" # gaussian_process, spec_random, real_random, taylor_green
     model_fine.w_hat = utils.hit_init_cond(init_cond, model_fine, key)
     model_fine.set_x_hist(model_fine.w_hat, model_fine.CN)
     # model_coarse.w_hat = utils.hit_init_cond(init_cond, model_coarse, key)

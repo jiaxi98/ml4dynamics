@@ -1,6 +1,7 @@
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
+import re
 from matplotlib import cm
 from matplotlib.animation import FuncAnimation
 
@@ -331,3 +332,134 @@ def plot_error_cloudmap(
   plt.ylabel(r"$u_{xxxx}$")
   plt.savefig(f"results/fig/{name}_err_dist.pdf")
   plt.close()
+
+
+def plot_bias_variance_comparison(data_file: str):
+    """
+    绘制多个方法的偏差(bias)和方差(variance)比较图
+    
+    参数:
+    methods : list of str
+        方法名称列表
+    biases : list of float
+        每个方法的偏差值
+    variances : list of float
+        每个方法的方差值
+    title : str, optional
+        图表标题 (默认为 "Bias-Variance Comparison")
+    """
+
+    def read_data_file(filename):
+      """
+      Read data.txt file and return a numpy array of shape [12, 4].
+
+      Parameters:
+      filename (str): Path to the data file
+
+      Returns:
+      np.ndarray: Array of shape [12, 4] containing the parsed numbers
+      """
+      data = []
+
+      with open(filename, 'r') as file:
+        for line in file:
+          # Remove whitespace and split by comma
+          line = line.strip()
+          if line:  # Skip empty lines
+            # Use regex to find all floating point numbers (including negative)
+            numbers = re.findall(r'-?\d+\.?\d*', line)
+            # Convert to float and add to data
+            row = [float(num) for num in numbers]
+            if len(row) == 4:  # Ensure we have exactly 4 numbers
+                data.append(row)
+
+      data = np.array(data)
+      for i in range(4):
+        if i == 2:
+          continue
+        if data[3 * i, 0] != data[0, 0] or data[3 * i, 2] != data[0, 2] or\
+          data[3 * i + 2, 0] != data[2, 0] or data[3 * i + 2, 2] != data[2, 2] or\
+          data[3 * i + 1, 0] != data[1, 0] or data[3 * i + 1, 2] != data[1, 2]:
+          raise ValueError("Data is not consistent")
+
+      first_moment_biases = [data[1, 0], data[1, 1], data[4, 1], data[7, 1], data[10, 1]]
+      first_moment_variances = [data[1, 2], data[1, 3], data[4, 3], data[7, 3], data[10, 3]]
+      second_moment_biases = [data[2, 0], data[2, 1], data[5, 1], data[8, 1], data[11, 1]]
+      second_moment_variances = [data[2, 2], data[2, 3], data[5, 3], data[8, 3], data[11, 3]]
+
+      return first_moment_biases, first_moment_variances,\
+        second_moment_biases, second_moment_variances
+    
+    first_moment_biases, first_moment_variances,\
+    second_moment_biases, second_moment_variances = read_data_file(f"results/data/{data_file}.txt")
+    methods = ['baseline', 'global correction', 'global filter', 'local correction', 'local filter']
+    assert len(methods) == len(first_moment_biases) == len(first_moment_variances), "输入列表长度必须一致"
+
+    plt.figure(figsize=(12, 8))
+    x = np.arange(len(methods))  # 方法的位置
+    width = 0.15  # 柱状图的宽度
+
+    bias_bars1 = plt.bar(x - width * 2, first_moment_biases, width, 
+                        color='royalblue', alpha=0.7, 
+                        label='M1 Bias', edgecolor='black')
+    variance_bars1 = plt.bar(x - width, first_moment_variances, width, 
+                            color='lightcoral', alpha=0.7, 
+                            label='M1 Variance', edgecolor='black')
+    bias_bars2 = plt.bar(x, second_moment_biases, width, 
+                        alpha=0.7, 
+                        label='M2 Bias', edgecolor='black')
+    variance_bars2 = plt.bar(x + width, second_moment_variances, width, 
+                            alpha=0.7, 
+                            label='M2 Variance', edgecolor='black')
+
+    for bar in bias_bars1:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                 f'{height:.3f}', ha='center', va='bottom', fontsize=10)
+    
+    for bar in variance_bars1:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                 f'{height:.3f}', ha='center', va='bottom', fontsize=10)
+        
+    for bar in bias_bars2:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                 f'{height:.3f}', ha='center', va='bottom', fontsize=10)
+    
+    for bar in variance_bars2:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                 f'{height:.3f}', ha='center', va='bottom', fontsize=10)
+    
+    # 添加标题和标签
+    plt.title("Bias-Variance Comparison", fontsize=16, pad=20)
+    # plt.xlabel('Methods', fontsize=14)
+    plt.ylabel('Error', fontsize=14)
+    
+    # 设置x轴刻度
+    plt.xticks(x, methods, fontsize=12)
+    plt.yticks(fontsize=12)
+    
+    # 添加网格线
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    
+    # 添加图例
+    plt.legend(fontsize=12, loc='upper right')
+    
+    # # 添加总误差线
+    # total_errors = [b + v for b, v in zip(biases, variances)]
+    # plt.plot(x, total_errors, 'o-', color='green', linewidth=2, markersize=8, 
+    #          label='Total Error (Bias + Variance)')
+    
+    # # 添加总误差标签
+    # for i, tot in enumerate(total_errors):
+    #     plt.text(i, tot + 0.02, f'{tot:.3f}', ha='center', va='bottom', 
+    #              fontsize=10, color='darkgreen')
+    
+    # 调整布局
+    plt.tight_layout()
+    plt.savefig("results/fig/error_bar.png", dpi=300)
+    
+    # 显示图表
+    plt.show()

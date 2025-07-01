@@ -60,8 +60,10 @@ def load_data(
       Re = config.sim.Re
       dataset = f"Re{Re}_n{case_num}"
     elif pde == "ks":
+      bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
+      nu = config.sim.nu
       c = config.sim.c
-      dataset = f"c{c:.1f}_n{case_num}"
+      dataset = f"{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}"
   h5_filename = f"data/{pde}/{dataset}.h5"
 
   with h5py.File(h5_filename, "r") as h5f:
@@ -759,7 +761,9 @@ def eval_a_posteriori(
     n_sample = 10
     rng = random.PRNGKey(1000)
     res_fn, _ = res_int_fn(config_dict)
+    L = model_fine.Lx
     N1 = config.sim.n
+    dx = L / N1
     l2_list = []
     first_moment_list = []
     second_moment_list = []
@@ -770,16 +774,13 @@ def eval_a_posteriori(
       print(f"{_}th sample")
       rng, key = random.split(rng)
       r0 = random.uniform(key) * 20 + 44
-      L = model_fine.Lx
       if config.sim.BC == "periodic":
-        dx = L / N1
         # u0 = model_fine.attractor + model_fine.init_scale * random.normal(key) *\
         #   jnp.sin(10 * jnp.pi * jnp.linspace(0, L - L/N1, N1) / L)
         r0 = random.uniform(key) * 20 + 44
         u0 = jnp.exp(-(jnp.linspace(0, L - L / N1, N1) - r0)**2 / r0**2 * 4)
       elif config.sim.BC == "Dirichlet-Neumann":
-        dx = L / (N1 + 1)
-        x = jnp.linspace(dx, L - dx, N1)
+        x = jnp.linspace(dx, L - dx, N1 - 1)
         # different choices of initial conditions
         # u0 = model_fine.attractor + init_scale * random.normal(key) *\
         #   jnp.sin(10 * jnp.pi * x / L)
@@ -825,15 +826,15 @@ def eval_a_posteriori(
     l2_list = np.array(l2_list)
     first_moment_list = np.array(first_moment_list)
     second_moment_list = np.array(second_moment_list)
-    print(np.mean(l2_list, axis=0), ", ", np.std(l2_list, axis=0))
-    print(
-      np.mean(first_moment_list, axis=0), ", ",
-      np.std(first_moment_list, axis=0)
-    )
-    print(
-      np.mean(second_moment_list, axis=0), ", ",
-      np.std(second_moment_list, axis=0)
-    )
+    # print(np.mean(l2_list, axis=0), ", ", np.std(l2_list, axis=0))
+    # print(
+    #   np.mean(first_moment_list, axis=0), ", ",
+    #   np.std(first_moment_list, axis=0)
+    # )
+    # print(
+    #   np.mean(second_moment_list, axis=0), ", ",
+    #   np.std(second_moment_list, axis=0)
+    # )
     print(
       np.mean(l2_list[~np.isnan(l2_list).any(axis=1)], axis=0), ", ",
       np.std(l2_list[~np.isnan(l2_list).any(axis=1)], axis=0)

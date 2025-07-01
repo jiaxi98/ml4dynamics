@@ -239,11 +239,14 @@ def main():
     dim = 2
     inputs_ = inputs
     outputs_ = outputs
+    type_ = None
     if pde == "ks":
       dim = 1
-      if config.sim.BC == "Dirichlet-Neumann" and _global:
-        inputs_ = inputs[:, :-1]
-        outputs_ = outputs[:, :-1]
+      if config.sim.BC == "Dirichlet-Neumann":
+        type_ = "pad"
+        if _global:
+          inputs_ = inputs[:, :-1]
+          outputs_ = outputs[:, :-1]
     one_traj_length = inputs.shape[0] // config.sim.case_num
     train_state, schedule = utils.prepare_unet_train_state(
       config_dict, ckpt_path, _global, False
@@ -272,10 +275,13 @@ def main():
         """
         if not is_aug:
           """a-posteriori evaluation"""
-          x_ = augment_inputs_fn(x[:, :-1])
-          x_ = jnp.concatenate(
-            [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
-          )
+          if type_ == "pad":
+            x_ = augment_inputs_fn(x[:, :-1])
+            x_ = jnp.concatenate(
+              [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
+            )
+          else:
+            x_ = augment_inputs_fn(x)
           x_ = x_.reshape(-1, x_.shape[-1])
           return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
         else:

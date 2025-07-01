@@ -24,7 +24,22 @@ For discussion related to compatibility of jax and torch, please refer to:
 [link2](https://github.com/jax-ml/jax/issues/18281),
 [link3](https://github.com/jax-ml/jax/issues/18032)
 
-## Reproduce the results
+## Generate the datasets
+Both filter and correction SGS stresses are calculated, modified the corresponding config file ks.yaml
+to switch between different boundary conditions: periodic and Dirichlet-Neumann BC.
+```bash
+python ml4dynamics/dataset_utils/generate_ks.py
+```
+
+## Train the model
+One can train on 1 or 10 trajectories. To verify the performance, one can verify on one trajectory
+to visualize and also on 10 trajectory to see the statistics, check `ml4dynamics.utils.utils.eval_a_posteriori`
+for more details.
+```bash
+python ml4dynamics/trainers/train_jax.py -c ks
+```
+
+<!-- ## Reproduce the results
 In the following we will provide the detailed procedure to reproduce the full experiments in the paper. All the estimated execution times are based on 4 GPUs (NVIDIA GeForce RTX 3090). All the checkpoints of network models are provided and can be used to directly generate the plots in `demo.ipynb` notebook without training the models.
 ### Data generation
 Estimated execution time: 1 hour
@@ -67,7 +82,7 @@ python exp4.py
 5. generate the table
 ```bash
 python exp5.py
-```
+``` -->
 
 ## Citation
 If you find this codebase useful for your research, please consider citing:

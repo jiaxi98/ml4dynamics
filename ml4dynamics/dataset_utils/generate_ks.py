@@ -26,14 +26,17 @@ def main():
     else float(args.c)
   config = Box(config_dict)
   c = config.sim.c
+  nu = config.sim.nu
   L = config.sim.L
   T = config.sim.T
   dt = config.sim.dt
   BC = config.sim.BC
   if BC == "periodic":
     N1 = config.sim.n
+    bc = "pbc"
   elif BC == "Dirichlet-Neumann":
     N1 = config.sim.n - 1
+    bc = "dnbc"
   r = config.sim.rx
   N2 = N1 // r
   rng = random.PRNGKey(config.sim.seed)
@@ -128,7 +131,7 @@ def main():
     "field represents the correction from the coarse grid simulation."
   }
 
-  with h5py.File(f"data/ks/c{c:.1f}_n{case_num}.h5", "w") as f:
+  with h5py.File(f"data/ks/{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}.h5", "w") as f:
     metadata_group = f.create_group("metadata")
     for key, value in data["metadata"].items():
       metadata_group.create_dataset(key, data=value)
@@ -203,7 +206,7 @@ def main():
       #   outputs_correction[index_array[i], :, 0] * ratio, label=r"$\tau^f - \tau^c$")
       axs[i].legend()
     c = config_dict["sim"]["c"]
-    plt.savefig(f"results/fig/cmp_c{c:.1f}.png", dpi=300)
+    plt.savefig(f"results/fig/cmp_{bc}_nu{nu:.1f}_c{c:.1f}.png", dpi=300)
     plt.close()
     """visualize the Fourier & POD modes"""
     input_hat = jnp.fft.fft(
