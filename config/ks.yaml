@@ -17,14 +17,16 @@ case: ks
 
 sim:
   nu: 1
-  c: 1.6
+  c: 1.7
   T: 400
   dt: .1
   L: 128
   n: 1024
-  r: 4
+  rx: 4
+  rt: 1
   init_scale: 1.
   BC: Dirichlet-Neumann
+  # BC: periodic
   seed: 123
   case_num: 10       # number of simulations to perform
   warm_up: 200      # warm up step for simulation
@@ -41,8 +43,9 @@ train:
   # sgs: filter
   sgs: correction
   kernel_size: 3
-  # input: ["u", "u_x", "u_xx"]
-  input: global
+  input: ["u", "u_x", "u_xx"]
+  # input: 3
+  # input: global
   bins: 50
   subsample: 200
   mode: regression # regression, gaussian, generative
@@ -50,12 +53,12 @@ train:
   n_g: 1 # number of gaussian mixture components
   lambda_: 1
   lr: 0.01
-  epochs_global: 2000
-  decay_global: 500 # number of epochs to decay the learning rate
+  epochs_global: 400
+  decay_global: 100 # number of epochs to decay the learning rate
   batch_size_global: 200
-  epochs_local: 20
-  decay_local: 5
-  batch_size_local: 100000
+  epochs_local: 800
+  decay_local: 200
+  batch_size_local: 10000
   save: 100
   vae:
     latents: 128

@@ -22,14 +22,15 @@ output_path: 2D_diff-react_NA_NA
 case: ns_hit
 
 sim:
-  n: 256
+  n: 512
   L: 2
-  Re: 10000
+  Re: 1000
   dim: 2
-  T: 500
-  dt: .1
-  r: 4
-  seed: 42
+  T: 20
+  dt: .01
+  rx: 8
+  rt: 1
+  seed: 123
   case_num: 1       # number of simulations to perform
   warm_up: 200      # warm up step for simulation
   patience: 5       # patience for NaN simulation
@@ -42,14 +43,14 @@ plot:
 
 train:
   lr: 0.01
-  # sgs: filter
-  sgs: correction
+  sgs: filter
+  # sgs: correction
   kernel_size: 3
-  # input: local
+  # input: u
   input: global
   buffer_size: 10
-  epochs_global: 1000
-  decay_global: 500 # number of epochs to decay the learning rate
+  epochs_global: 400
+  decay_global: 100 # number of epochs to decay the learning rate
   batch_size_global: 200
   epochs_local: 1
   decay_local: 5
