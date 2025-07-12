@@ -97,4 +97,11 @@ If you find this codebase useful for your research, please consider citing:
   year={2025},
   publisher={SIAM}
 }
+
+@inproceedings{zhao2025generative,
+  title={Generative subgrid-scale modeling},
+  author={Zhao, Jiaxi and Arisaka, Sohei and Li, Qianxiao},
+  booktitle={ICLR 2025 Workshop on Machine Learning Multiscale Processes},
+  year={2025}
+}
 ```

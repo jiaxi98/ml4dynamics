@@ -290,7 +290,7 @@ def hit_init_cond(type_: str, model, key: PRNGKey):
     2. the discrepancy between the fine and coarse simulation is very big
     while their energy spectra are similar
     """
-    w = random.normal(key, (model.N, model.N))
+    w = random.normal(key, (model.N, model.N)) * 4
     w_hat = jnp.fft.rfft2(w)
     w_hat = w_hat.at[0, 0].set(0)
   elif type_ == "spec_random":
@@ -315,7 +315,7 @@ def hit_init_cond(type_: str, model, key: PRNGKey):
     """
     w_hat = random.normal(
       key, (model.N, model.N // 2 + 1)
-    ) * model.init_scale / (-model.laplacian_ + 49)**2.5 * model.N**1.5
+    ) * model.init_scale / (-model.laplacian_ + 49)**2.5 * model.N**1.75
   elif type_ == "taylor_green":
     """initialization scheme 4: Taylor-Green vortex
     the stress is zero
