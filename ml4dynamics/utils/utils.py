@@ -149,6 +149,8 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
         tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
       if "u_xxxx" in input_labels:
         tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
+      if "x" in input_labels: 
+        tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
     elif pde == "ns_hit":
       if "u" in input_labels:
         tmp.append(inputs)
