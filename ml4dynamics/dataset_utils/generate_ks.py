@@ -52,6 +52,18 @@ def main():
   inputs = np.zeros((case_num, model_fine.step_num, N))
   outputs_filter = np.zeros((case_num, model_fine.step_num, N))
   outputs_correction = np.zeros((case_num, model_fine.step_num, N))
+  
+  # generate spatial coordinates
+  if BC == "periodic":
+      dx_coarse = L / N2
+      x_coords = jnp.linspace(0, L - dx_coarse, N2)
+  elif BC == "Dirichlet-Neumann":
+      dx_coarse = L / (N2 + 1)
+      x_coords = jnp.linspace(dx_coarse, L - dx_coarse, N2)
+      
+  x_coords_full = jnp.tile(x_coords[None, None, :], (case_num, model_fine.step_num, 1))
+
+
   for i in range(case_num):
     print(i)
     rng, key = random.split(rng)
@@ -101,6 +113,8 @@ def main():
   inputs = inputs.reshape(-1, N)
   outputs_correction = outputs_correction.reshape(-1, N)
   outputs_filter = outputs_filter.reshape(-1, N)
+  x_coords_full = x_coords_full.reshape(-1, N2)
+  
   if jnp.any(jnp.isnan(inputs)) or jnp.any(jnp.isnan(outputs_filter)) or\
     jnp.any(jnp.isinf(inputs)) or jnp.any(jnp.isinf(outputs_filter)) or\
     jnp.any(jnp.isnan(outputs_correction)) or jnp.any(jnp.isinf(outputs_correction)):
@@ -122,6 +136,7 @@ def main():
       "inputs": inputs[..., None],
       "outputs_filter": outputs_filter[..., None],
       "outputs_correction": outputs_correction[..., None],
+      "x_coords": x_coords_full[..., None]
     },
     "config":
     config_dict,
@@ -143,6 +158,9 @@ def main():
     )
     data_group.create_dataset(
       "outputs_correction", data=data["data"]["outputs_correction"]
+    )
+    data_group.create_dataset(
+      "x_coords", data=data["data"]["x_coords"]
     )
 
     config_group = f.create_group("config")
