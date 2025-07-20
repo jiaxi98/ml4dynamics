@@ -36,10 +36,22 @@ def run_simulation_fine_grid_correction(
     x_res = _iter(x_res)
     x_next = int_fn(x_res)
     if type_ == "pad":
-      x = jnp.concatenate([x, jnp.zeros((1, 1))], axis=0)
+      if x.ndim == 1:
+        x = jnp.concatenate([x, jnp.zeros(1)], axis=0)
+      elif x.ndim == 2:
+        x = jnp.concatenate([x, jnp.zeros((1, x.shape[1]))], axis=0)
+    
+    if x.ndim == 1:
+        x = x.reshape(-1, 1)
+    
     correction = forward_fn(x.reshape(1, *x.shape))
+    
     if type_ == "pad":
-      correction = correction[:, :-1]
+      if correction.ndim == 2:
+        correction = correction[:, :-1]
+      elif correction.ndim == 3:
+        correction = correction[:, :-1, :]
+    
     return x_next + (correction[0] * (1 - beta) + beta * expert) * dt
 
   dt = coarse_model.dt
@@ -98,12 +110,23 @@ def run_simulation_coarse_grid_correction(
   def iter(x: jnp.array, expert: jnp.array = 0):
     x_next = _iter(x)
     if type_ == "pad":
-      x = jnp.concatenate([x, jnp.zeros((1, 1))], axis=0)
+      if x.ndim == 1:
+        x = jnp.concatenate([x, jnp.zeros(1)], axis=0)
+      elif x.ndim == 2:
+        x = jnp.concatenate([x, jnp.zeros((1, x.shape[1]))], axis=0)
+    
+    if x.ndim == 1:
+        x = x.reshape(-1, 1)
+    
     correction = forward_fn(x.reshape(1, *x.shape))
+    
     if type_ == "pad":
-      correction = correction[:, :-1]
-    tmp = correction[0]
-    return x_next + (tmp * (1 - beta) + beta * expert) * dt
+      if correction.ndim == 2:
+        correction = correction[:, :-1]
+      elif correction.ndim == 3:
+        correction = correction[:, :-1, :]
+    
+    return x_next + (correction[0] * (1 - beta) + beta * expert) * dt
 
   dt = model.dt
   step_num = model.step_num
@@ -124,10 +147,22 @@ def run_simulation_sgs(
   def iter(x: jnp.array, expert: jnp.array = 0):
     x_next = _iter(x)
     if type_ == "pad":
-      x = jnp.concatenate([x, jnp.zeros((1, 1))], axis=0)
+      if x.ndim == 1:
+        x = jnp.concatenate([x, jnp.zeros(1)], axis=0)
+      elif x.ndim == 2:
+        x = jnp.concatenate([x, jnp.zeros((1, x.shape[1]))], axis=0)
+    
+    if x.ndim == 1:
+        x = x.reshape(-1, 1)
+    
     correction = forward_fn(x.reshape(1, *x.shape))
+    
     if type_ == "pad":
-      correction = correction[:, :-1]
+      if correction.ndim == 2:
+        correction = correction[:, :-1]
+      elif correction.ndim == 3:
+        correction = correction[:, :-1, :]
+    
     tmp = correction[0] * dx**2
     if model.model_type == "KS":
       # tmp = (jnp.roll(correction[0], -1) - jnp.roll(correction[0], 1)) / 2 / dx
