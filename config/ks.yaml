@@ -43,8 +43,8 @@ train:
   # sgs: filter
   sgs: correction
   kernel_size: 3
-  input: ["u", "u_x", "u_xx", "x"]
-  # input: 4
+  input: ["u", "u_x", "u_xx"]
+  # input: 3
   # input: global
   bins: 50
   subsample: 200

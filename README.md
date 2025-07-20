@@ -39,6 +39,30 @@ for more details.
 python ml4dynamics/trainers/train_jax.py -c ks
 ```
 
+### Train a global/local model
+This codebase supports both the training of the global (mesh to mesh) and local (pt to pt)
+SGS model. To switch between these two modes, please modify the config file accordingly.
+Below are two examples for global/local training.
+- global
+```yaml
+train:
+  # input: ["u", "u_x", "u_xx"]
+  # input: 3
+  input: global
+```
+- local
+```yaml
+train:
+  # input: ["u", "u_x", "u_xx"]
+  input: 3
+  # input: global
+```
+Notice for local training, two choices to specify the input features are provided.
+The first choice $(u, u_x, u_{xx})$ directly specify the input features with order
+of the local model while the second choice specify the size of the stencil for the
+input features, e.g. $3$ refers to $(u_{i-1}, u_i, u_{i+1})$ and $5$ refers to
+$(u_{i-1}, u_{i-1}, u_i, u_{i+1}, u_{i+2})$ with order.
+
 <!-- ## Reproduce the results
 In the following we will provide the detailed procedure to reproduce the full experiments in the paper. All the estimated execution times are based on 4 GPUs (NVIDIA GeForce RTX 3090). All the checkpoints of network models are provided and can be used to directly generate the plots in `demo.ipynb` notebook without training the models.
 ### Data generation
@@ -96,5 +120,12 @@ If you find this codebase useful for your research, please consider citing:
   pages={C475--C500},
   year={2025},
   publisher={SIAM}
+}
+
+@inproceedings{zhao2025generative,
+  title={Generative subgrid-scale modeling},
+  author={Zhao, Jiaxi and Arisaka, Sohei and Li, Qianxiao},
+  booktitle={ICLR 2025 Workshop on Machine Learning Multiscale Processes},
+  year={2025}
 }
 ```
