@@ -46,15 +46,15 @@ Below are two examples for global/local training.
 - global
 ```yaml
 train:
-  # input: ["u", "u_x", "u_xx"]
-  # input: 3
+  # input: ["u", "u_x", "u_xx", "x"]
+  # input: 4
   input: global
 ```
 - local
 ```yaml
 train:
-  # input: ["u", "u_x", "u_xx"]
-  input: 3
+  # input: ["u", "u_x", "u_xx", "x"]
+  input: 4
   # input: global
 ```
 Notice for local training, two choices to specify the input features are provided.
