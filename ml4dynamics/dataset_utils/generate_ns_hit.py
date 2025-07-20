@@ -20,15 +20,6 @@ from ml4dynamics.utils import calc_utils, utils, viz_utils
 
 def main():
 
-  # @jax.jit
-  def calc_J(what_hist, model):
-    psi_hat = -what_hist / model.laplacian_[None]
-    dpsidx = np.fft.irfft2(1j * psi_hat * model.kx[None], axes=(1, 2))
-    dpsidy = np.fft.irfft2(1j * psi_hat * model.ky[None], axes=(1, 2))
-    dwdx = np.fft.irfft2(1j * what_hist * model.kx[None], axes=(1, 2))
-    dwdy = np.fft.irfft2(1j * what_hist * model.ky[None], axes=(1, 2))
-    return dpsidy * dwdx - dpsidx * dwdy
-
   parser = argparse.ArgumentParser()
   parser.add_argument("-R", "--Re", default=None, help="Reynolds number.")
   args = parser.parse_args()
@@ -61,7 +52,9 @@ def main():
     rng, key = random.split(rng)
     i = i + 1
     print('generating the {}-th trajectory...'.format(j))
-    init_cond = "spec_random" # gaussian_process, spec_random, real_random, taylor_green
+
+    # fine and coarse-simulations
+    init_cond = "taylor_green" # gaussian_process, real_random, spec_random, taylor_green
     model_fine.w_hat = utils.hit_init_cond(init_cond, model_fine, key)
     model_fine.set_x_hist(model_fine.w_hat, model_fine.CN)
     # model_coarse.w_hat = utils.hit_init_cond(init_cond, model_coarse, key)
@@ -70,6 +63,15 @@ def main():
     model_coarse.w_hat = jnp.fft.rfft2(res_fn(w[..., None])[..., 0])
     model_coarse.set_x_hist(model_coarse.w_hat, model_coarse.CN)
 
+    # calculating the filter and correction SGS stress
+    # @jax.jit
+    def calc_J(what_hist, model):
+      psi_hat = -what_hist / model.laplacian_[None]
+      dpsidx = np.fft.irfft2(1j * psi_hat * model.kx[None], axes=(1, 2))
+      dpsidy = np.fft.irfft2(1j * psi_hat * model.ky[None], axes=(1, 2))
+      dwdx = np.fft.irfft2(1j * what_hist * model.kx[None], axes=(1, 2))
+      dwdy = np.fft.irfft2(1j * what_hist * model.ky[None], axes=(1, 2))
+      return dpsidy * dwdx - dpsidx * dwdy
     kernel_x = kernel_y = r
     kernel = jnp.ones((1, kernel_x, kernel_y, 1)) / kernel_x / kernel_y
     conv = partial(
@@ -145,6 +147,7 @@ def main():
       outputs_correction[j] = output_correction
       j = j + 1
 
+  # save the data
   save = True
   if j == case_num and save:
     data = {
