@@ -319,7 +319,6 @@ def main():
         fig_name=f"reg_{fig_name}",
       )
       return
-      
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=True)
     utils.eval_a_priori(
