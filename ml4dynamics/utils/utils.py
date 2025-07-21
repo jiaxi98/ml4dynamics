@@ -122,7 +122,7 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
 
   if isinstance(input_labels, int):
     """use stencils as input"""
-    
+
     tmp = [inputs]
     if input_labels % 2 != 1:
       raise Exception("Size of stencils must be odd")
@@ -139,7 +139,7 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
         tmp.append(jnp.roll(inputs, -(i + 1), axis=2))
         tmp[-1] = tmp[-1].at[:, :, -i - 1:].set(0)
   else:
-     """use derivatives as input"""
+    """use derivatives as input"""
     tmp = []
     if pde == "ks":
       if "u" in input_labels:
