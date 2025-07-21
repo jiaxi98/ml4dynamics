@@ -330,7 +330,7 @@ def main():
       dim=dim,
       fig_name=f"reg_{fig_name}",
     )
-    
+
     # a-posteriori evaluation using hybrid simulator
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=False)
