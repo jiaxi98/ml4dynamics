@@ -133,6 +133,7 @@ def main():
       utils.augment_inputs, pde=pde, input_labels=input_labels, model=sim_model
     )
     if mode == "tr":
+      # add tangent-space regularization
       lambda_ = config.train.lambda_
       ae_train_state, _ = utils.prepare_unet_train_state(
         config_dict, f"ckpts/{pde}/{dataset}_ae_unet.pkl", True, False
@@ -180,6 +181,7 @@ def main():
             -tmp + sim_model.nu * sim_model.laplacian * w_hat
           )
 
+    # training loop
     iters = tqdm(range(epochs))
     loss_hist = []
     for epoch in iters:
@@ -236,6 +238,7 @@ def main():
     plt.savefig(f"results/fig/losshist_{fig_name}.png")
     plt.close()
 
+    # pack the NN for later evaluation
     dim = 2
     inputs_ = inputs
     outputs_ = outputs
@@ -274,6 +277,7 @@ def main():
         global model for the a-posteriori simulation
         """
         if not is_aug:
+          """a-posteriori evaluation"""
           if type_ == "pad":
               if x.ndim == 3:
                   x_ = augment_inputs_fn(x[:, :-1])
@@ -303,6 +307,7 @@ def main():
 
       inputs_ = inputs_[..., 0:1]
 
+    # a-priori evaluation of the regression problem
     if mode == "ae":
       utils.eval_a_priori(
         forward_fn=forward_fn,
@@ -314,6 +319,8 @@ def main():
         fig_name=f"reg_{fig_name}",
       )
       return
+      
+    # a-posteriori evaluation using hybrid simulator
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=True)
     utils.eval_a_priori(
@@ -358,6 +365,7 @@ def main():
   with open(f"config/{args.config}.yaml", "r") as file:
     config_dict = yaml.safe_load(file)
 
+  # load dataset
   config = Box(config_dict)
   pde = config.case
   input_labels = config.train.input
