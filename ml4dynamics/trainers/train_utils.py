@@ -45,7 +45,6 @@ def run_simulation_fine_grid_correction(
         x = x.reshape(-1, 1)
     
     correction = forward_fn(x.reshape(1, *x.shape))
-    
     if type_ == "pad":
       if correction.ndim == 2:
         correction = correction[:, :-1]
