@@ -38,18 +38,18 @@ def run_simulation_fine_grid_correction(
     
     orig_ndim = x.ndim
     if orig_ndim == 1:
-        x = x.reshape(-1, 1)
+      x = x.reshape(-1, 1)
     
     if type_ == "pad":
-        x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
-        pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
-        x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
+      x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
+      pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
+      x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
     
     x_batch = x[None, ...] if orig_ndim == 1 else x[None, ...]
     correction = forward_fn(x_batch)
     
     if type_ == "pad":
-        correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
+      correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
     
     correction = correction[0]
     return x_next + (correction * (1 - beta) + beta * expert) * dt
@@ -112,18 +112,18 @@ def run_simulation_coarse_grid_correction(
     
     orig_ndim = x.ndim
     if orig_ndim == 1:
-        x = x.reshape(-1, 1)
+      x = x.reshape(-1, 1)
     
     if type_ == "pad":
-        x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
-        pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
-        x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
+      x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
+      pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
+      x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
     
     x_batch = x[None, ...] if orig_ndim == 1 else x[None, ...]
     correction = forward_fn(x_batch)
     
     if type_ == "pad":
-        correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
+      correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
     
     correction = correction[0]
     return x_next + (correction * (1 - beta) + beta * expert) * dt
@@ -149,18 +149,18 @@ def run_simulation_sgs(
     
     orig_ndim = x.ndim
     if orig_ndim == 1:
-        x = x.reshape(-1, 1)
+      x = x.reshape(-1, 1)
     
     if type_ == "pad":
-        x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
-        pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
-        x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
+      x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
+      pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
+      x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
     
     x_batch = x[None, ...] if orig_ndim == 1 else x[None, ...]
     correction = forward_fn(x_batch)
     
     if type_ == "pad":
-        correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
+      correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
     
     correction = correction[0]
     tmp = correction * dx**2
