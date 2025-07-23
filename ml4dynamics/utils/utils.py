@@ -652,8 +652,7 @@ def eval_a_posteriori(
     if config.case == "ns_hit":
       model.set_x_hist(np.fft.rfft2(inputs[0, ..., 0]), model.CN)
     elif config.case == "ks":
-      initial_condition = inputs[0, ..., 0]
-      model.run_simulation(initial_condition, iter_)
+      model.run_simulation(inputs[0, ..., 0], iter_)
     x_hist = run_simulation(inputs[0])
     # NOTE: for general a-posteriori test
     # u_fft = jnp.zeros((2, nx, nx))
