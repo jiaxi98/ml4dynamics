@@ -150,13 +150,13 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
         """
         raise Exception("u is not in input_labels")
       if "u_x" in input_labels:
-          tmp.append(jnp.einsum("ij, abjk -> abik", model.L1, inputs))
+        tmp.append(jnp.einsum("ij, abjk -> abik", model.L1, inputs))
       if "u_xx" in input_labels:
-          tmp.append(jnp.einsum("ij, abjk -> abik", model.L2, inputs))
+        tmp.append(jnp.einsum("ij, abjk -> abik", model.L2, inputs))
       if "u_xxxx" in input_labels:
-          tmp.append(jnp.einsum("ij, abjk -> abik", model.L4, inputs))
+        tmp.append(jnp.einsum("ij, abjk -> abik", model.L4, inputs))
       if "x" in input_labels: 
-          tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
+        tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
     elif pde == "ns_hit":
       if "u" in input_labels:
         tmp.append(inputs)
