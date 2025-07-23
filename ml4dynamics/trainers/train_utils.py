@@ -35,23 +35,24 @@ def run_simulation_fine_grid_correction(
     x_res = res_fn(x)
     x_res = _iter(x_res)
     x_next = int_fn(x_res)
-    if type_ == "pad":
-      if x.ndim == 1:
-        x = jnp.concatenate([x, jnp.zeros(1)], axis=0)
-      elif x.ndim == 2:
-        x = jnp.concatenate([x, jnp.zeros((1, x.shape[1]))], axis=0)
     
-    if x.ndim == 1:
+    orig_ndim = x.ndim
+    if orig_ndim == 1:
         x = x.reshape(-1, 1)
     
-    correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
-      if correction.ndim == 2:
-        correction = correction[:, :-1]
-      elif correction.ndim == 3:
-        correction = correction[:, :-1, :]
+        x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
+        pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
+        x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
     
-    return x_next + (correction[0] * (1 - beta) + beta * expert) * dt
+    x_batch = x[None, ...] if orig_ndim == 1 else x[None, ...]
+    correction = forward_fn(x_batch)
+    
+    if type_ == "pad":
+        correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
+    
+    correction = correction[0]
+    return x_next + (correction * (1 - beta) + beta * expert) * dt
 
   dt = coarse_model.dt
   step_num = coarse_model.step_num
@@ -108,23 +109,24 @@ def run_simulation_coarse_grid_correction(
   @jax.jit
   def iter(x: jnp.array, expert: jnp.array = 0):
     x_next = _iter(x)
-    if type_ == "pad":
-      if x.ndim == 1:
-        x = jnp.concatenate([x, jnp.zeros(1)], axis=0)
-      elif x.ndim == 2:
-        x = jnp.concatenate([x, jnp.zeros((1, x.shape[1]))], axis=0)
     
-    if x.ndim == 1:
+    orig_ndim = x.ndim
+    if orig_ndim == 1:
         x = x.reshape(-1, 1)
     
-    correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
-      if correction.ndim == 2:
-        correction = correction[:, :-1]
-      elif correction.ndim == 3:
-        correction = correction[:, :-1, :]
+        x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
+        pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
+        x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
     
-    return x_next + (correction[0] * (1 - beta) + beta * expert) * dt
+    x_batch = x[None, ...] if orig_ndim == 1 else x[None, ...]
+    correction = forward_fn(x_batch)
+    
+    if type_ == "pad":
+        correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
+    
+    correction = correction[0]
+    return x_next + (correction * (1 - beta) + beta * expert) * dt
 
   dt = model.dt
   step_num = model.step_num
@@ -144,28 +146,26 @@ def run_simulation_sgs(
   @jax.jit
   def iter(x: jnp.array, expert: jnp.array = 0):
     x_next = _iter(x)
-    if type_ == "pad":
-      if x.ndim == 1:
-        x = jnp.concatenate([x, jnp.zeros(1)], axis=0)
-      elif x.ndim == 2:
-        x = jnp.concatenate([x, jnp.zeros((1, x.shape[1]))], axis=0)
     
-    if x.ndim == 1:
+    orig_ndim = x.ndim
+    if orig_ndim == 1:
         x = x.reshape(-1, 1)
     
-    correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
-      if correction.ndim == 2:
-        correction = correction[:, :-1]
-      elif correction.ndim == 3:
-        correction = correction[:, :-1, :]
+        x_sliced = x[:-1, ...] if orig_ndim == 1 else x[:, :-1, ...]
+        pad_dims = (1,) + x_sliced.shape[1:] if orig_ndim == 1 else (x_sliced.shape[0], 1) + x_sliced.shape[2:]
+        x = jnp.concatenate([x_sliced, jnp.zeros(pad_dims)], axis=0 if orig_ndim == 1 else 1)
     
-    tmp = correction[0] * dx**2
+    x_batch = x[None, ...] if orig_ndim == 1 else x[None, ...]
+    correction = forward_fn(x_batch)
+    
+    if type_ == "pad":
+        correction = correction[:, :-1, ...] if orig_ndim == 1 else correction[:, :-1, ...]
+    
+    correction = correction[0]
+    tmp = correction * dx**2
     if model.model_type == "KS":
-      # tmp = (jnp.roll(correction[0], -1) - jnp.roll(correction[0], 1)) / 2 / dx
-      # tmp = tmp.at[0].set(correction[0, 1] / 2 / dx)
-      # tmp = tmp.at[-1].set(-correction[0, -2] / 2 / dx)
-      tmp = model.L1 @ correction[0]
+      tmp = model.L1 @ correction
     return x_next + (tmp * (1 - beta) + beta * expert) * dt
 
   dt = model.dt
