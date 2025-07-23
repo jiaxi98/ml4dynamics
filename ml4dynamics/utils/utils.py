@@ -126,18 +126,17 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
     tmp = [inputs]
     if input_labels % 2 != 1:
       raise Exception("Size of stencils must be odd")
+    spatial_axis = 1 if inputs.ndim == 3 else 2
     for i in range(input_labels // 2):
       """NOTE: currently only support 1D KS with DN BC"""
-      if inputs.ndim == 3:
-        tmp.append(jnp.roll(inputs, i + 1, axis=1))
-        tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
-        tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
-        tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
-      elif inputs.ndim == 4:
-        tmp.append(jnp.roll(inputs, i + 1, axis=2))
-        tmp[-1] = tmp[-1].at[:, :, :i + 1].set(0)
-        tmp.append(jnp.roll(inputs, -(i + 1), axis=2))
-        tmp[-1] = tmp[-1].at[:, :, -i - 1:].set(0)
+      rolled_plus = jnp.roll(inputs, i + 1, axis=spatial_axis)
+      rolled_plus = rolled_plus.at[tuple(slice(None) * spatial_axis + (slice(0, i + 1),)].set(0)
+      
+      rolled_minus = jnp.roll(inputs, -(i + 1), axis=spatial_axis)
+      rolled_minus = rolled_minus.at[tuple(slice(None) * spatial_axis + (slice(-i - 1, None),)].set(0)
+      
+      tmp.append(rolled_plus)
+      tmp.append(rolled_minus)
   else:
     """use derivatives as input"""
     tmp = []
@@ -149,21 +148,13 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
         since we need the input of u for later a-posteriori test
         """
         raise Exception("u is not in input_labels")
+      einsum_str = "ij, ...jk -> ...ik" if inputs.ndim == 3 else "ij, ...jk -> ...ik"
       if "u_x" in input_labels:
-        if inputs.ndim == 3:
-          tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
-        elif inputs.ndim == 4:
-          tmp.append(jnp.einsum("ij, abjk -> abik", model.L1, inputs))
+        tmp.append(jnp.einsum(einsum_str, model.L1, inputs))
       if "u_xx" in input_labels:
-        if inputs.ndim == 3:
-          tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
-        elif inputs.ndim == 4:
-          tmp.append(jnp.einsum("ij, abjk -> abik", model.L2, inputs))
+        tmp.append(jnp.einsum(einsum_str, model.L2, inputs))
       if "u_xxxx" in input_labels:
-        if inputs.ndim == 3:
-          tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
-        elif inputs.ndim == 4:
-          tmp.append(jnp.einsum("ij, abjk -> abik", model.L4, inputs))
+        tmp.append(jnp.einsum(einsum_str, model.L4, inputs))
       if "x" in input_labels: 
         tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
     elif pde == "ns_hit":
@@ -661,10 +652,8 @@ def eval_a_posteriori(
     if config.case == "ns_hit":
       model.set_x_hist(np.fft.rfft2(inputs[0, ..., 0]), model.CN)
     elif config.case == "ks":
-      if inputs.ndim == 3:
-        model.run_simulation(inputs[0, :, 0], iter_)
-      elif inputs.ndim == 4:
-        model.run_simulation(inputs[0, :, 0, 0], iter_)
+      initial_condition = inputs[0, ..., 0]
+      model.run_simulation(initial_condition, iter_)
     x_hist = run_simulation(inputs[0])
     # NOTE: for general a-posteriori test
     # u_fft = jnp.zeros((2, nx, nx))
