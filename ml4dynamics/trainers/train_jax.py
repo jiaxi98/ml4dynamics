@@ -279,10 +279,10 @@ def main():
         if not is_aug:
           """a-posteriori evaluation"""
           if type_ == "pad":
-              x_sliced = x[:, :-1, ...]
-              x_ = augment_inputs_fn(x_sliced)
-              pad_shape = (x_.shape[0], 1, *x_.shape[2:])
-              x_ = jnp.concatenate([x_, jnp.zeros(pad_shape)], axis=1)
+            x_sliced = x[:, :-1, ...]
+            x_ = augment_inputs_fn(x_sliced)
+            pad_shape = (x_.shape[0], 1, *x_.shape[2:])
+            x_ = jnp.concatenate([x_, jnp.zeros(pad_shape)], axis=1)
         else:
           """a-priori evaluation"""
           x_ = x
