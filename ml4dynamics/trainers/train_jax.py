@@ -279,31 +279,17 @@ def main():
         if not is_aug:
           """a-posteriori evaluation"""
           if type_ == "pad":
-              if x.ndim == 3:
-                  x_ = augment_inputs_fn(x[:, :-1])
-                  x_ = jnp.concatenate(
-                      [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
-                  )
-              elif x.ndim == 4:
-                  x_ = augment_inputs_fn(x[:, :-1, :])
-                  x_ = jnp.concatenate(
-                      [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-2], x_.shape[-1]))], axis=1
-                  )
-          else:
-              x_ = augment_inputs_fn(x)
-          if x.ndim == 3:
-              x_ = x_.reshape(-1, x_.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
-          elif x.ndim == 4:
-              x_ = x_.reshape(-1, x_.shape[-2], x_.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:3]), -1)
+                x_sliced = x[:, :-1, ...]
+                x_ = augment_inputs_fn(x_sliced)
+                pad_shape = (x_.shape[0], 1, *x_.shape[2:])
+                x_ = jnp.concatenate([x_, jnp.zeros(pad_shape)], axis=1)
         else:
-          if x.ndim == 3:
-              x_ = x.reshape(-1, x.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:2]), -1)
-          elif x.ndim == 4:
-              x_ = x.reshape(-1, x.shape[-2], x.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:3]), -1)
+          x_ = x
+          
+        orig_shape = x.shape[:-1]
+        x_ = x_.reshape(-1, x_.shape[-1])
+        y_ = train_state.apply_fn(train_state.params, x_)
+        return y_.reshape(orig_shape + (y_.shape[-1],))
 
       inputs_ = inputs_[..., 0:1]
 
@@ -334,28 +320,16 @@ def main():
     # a-posteriori evaluation using hybrid simulator
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=False)
-      if inputs_.ndim == 3:
-          utils.eval_a_posteriori(
-              config_dict=config_dict,
-              forward_fn=forward_fn,
-              inputs=inputs_[:one_traj_length],
-              outputs=outputs_[:one_traj_length],
-              dim=dim,
-              beta=0.0,
-              fig_name=f"sim_{fig_name}",
-              _plot=True,
-          )
-      elif inputs_.ndim == 4:
-          utils.eval_a_posteriori(
-              config_dict=config_dict,
-              forward_fn=forward_fn,
-              inputs=inputs_[:one_traj_length, :, :, :],
-              outputs=outputs_[:one_traj_length, :, :, :],
-              dim=dim,
-              beta=0.0,
-              fig_name=f"sim_{fig_name}",
-              _plot=True,
-          )
+      utils.eval_a_posteriori(
+          config_dict=config_dict,
+          forward_fn=forward_fn,
+          inputs=inputs_[:one_traj_length],
+          outputs=outputs_[:one_traj_length],
+          dim=dim,
+          beta=0.0,
+          fig_name=f"sim_{fig_name}",
+          _plot=True,
+      )
 
   parser = argparse.ArgumentParser()
   parser.add_argument(
