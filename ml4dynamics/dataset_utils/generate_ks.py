@@ -64,6 +64,8 @@ def main():
   for i in range(case_num):
     print(i)
     rng, key = random.split(rng)
+
+    # fine and coarse-simulations
     # NOTE: the initialization here is important, DO NOT use the random
     # i.i.d. Gaussian noise as the initial condition
     if BC == "periodic":
@@ -88,6 +90,7 @@ def main():
       u0_ = jnp.exp(-(jnp.linspace(dx_, L - dx_, N) - r0)**2 / r0**2 * 4)
     model_fine.run_simulation(u0, model_fine.CN_FEM)
     model_coarse.run_simulation(u0_, model_coarse.CN_FEM)
+     # calculating the filter and correction SGS stress
     input_velocity = jax.vmap(res_fn)(model_fine.x_hist)[...,
                                                 0]  # shape = [step_num, N2]
     output_correction = np.zeros_like(outputs_correction[0])
@@ -101,12 +104,14 @@ def main():
       # elif sgs_model == "fine_correction":
       #   output[j] = (next_step_fine - int_fn(next_step_coarse)[:, 0]) / dt
 
-    # 更新输入数组（包含速度和坐标）
+    # if sgs_model == "fine_correction":
+    #   inputs[i] = model_fine.x_hist
     inputs = inputs.at[i, :, :, 0].set(input_velocity)
     inputs = inputs.at[i, :, :, 1].set(jnp.tile(x_coords, (model_fine.step_num, 1)))
     outputs_filter = outputs_filter.at[i].set(output_filter)
     outputs_correction = outputs_correction.at[i].set(output_correction)
 
+  # save the data
   inputs = inputs.reshape(-1, N, 2)
   outputs_correction = outputs_correction.reshape(-1, N)
   outputs_filter = outputs_filter.reshape(-1, N)
