@@ -334,16 +334,16 @@ def main():
     # a-posteriori evaluation using hybrid simulator
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=False)
-      utils.eval_a_posteriori(
-          config_dict=config_dict,
-          forward_fn=forward_fn,
-          inputs=inputs_[:one_traj_length],
-          outputs=outputs_[:one_traj_length],
-          dim=dim,
-          beta=0.0,
-          fig_name=f"sim_{fig_name}",
-          _plot=True,
-          )
+    utils.eval_a_posteriori(
+      config_dict=config_dict,
+      forward_fn=forward_fn,
+      inputs=inputs_[:one_traj_length],
+      outputs=outputs_[:one_traj_length],
+      dim=dim,
+      beta=0.0,
+      fig_name=f"sim_{fig_name}",
+      _plot=True,
+    )
 
   parser = argparse.ArgumentParser()
   parser.add_argument(
