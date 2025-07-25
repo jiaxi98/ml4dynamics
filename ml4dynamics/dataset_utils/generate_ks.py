@@ -49,9 +49,9 @@ def main():
   # else:
   #   N = N2
   N = N2
-  inputs = jnp.zeros((case_num, model_fine.step_num, N, 2))
-  outputs_filter = jnp.zeros((case_num, model_fine.step_num, N))
-  outputs_correction = jnp.zeros((case_num, model_fine.step_num, N))
+  inputs = np.zeros((case_num, model_fine.step_num, N))
+  outputs_filter = np.zeros((case_num, model_fine.step_num, N))
+  outputs_correction = np.zeros((case_num, model_fine.step_num, N))
   
   # generate spatial coordinates
   if BC == "periodic":
@@ -60,6 +60,9 @@ def main():
   elif BC == "Dirichlet-Neumann":
       dx_coarse = L / (N2 + 1)
       x_coords = jnp.linspace(dx_coarse, L - dx_coarse, N2)
+      
+  x_coords_full = jnp.tile(x_coords[None, None, :], (case_num, model_fine.step_num, 1))
+
 
   for i in range(case_num):
     print(i)
@@ -92,14 +95,14 @@ def main():
     model_coarse.run_simulation(u0_, model_coarse.CN_FEM)
 
     # calculating the filter and correction SGS stress
-    input_velocity = jax.vmap(res_fn)(model_fine.x_hist)[...,
+    input = jax.vmap(res_fn)(model_fine.x_hist)[...,
                                                 0]  # shape = [step_num, N2]
     output_correction = np.zeros_like(outputs_correction[0])
-    output_filter = -(jax.vmap(res_fn)(model_fine.x_hist**2)[..., 0] - input_velocity**2) / 2\
+    output_filter = -(jax.vmap(res_fn)(model_fine.x_hist**2)[..., 0] - input**2) / 2\
       / model_coarse.dx**2
     for j in range(model_fine.step_num):
       next_step_fine = model_fine.CN_FEM(model_fine.x_hist[j])
-      next_step_coarse = model_coarse.CN_FEM(input_velocity[j])
+      next_step_coarse = model_coarse.CN_FEM(input[j])
       output_correction[
         j] = (res_fn(next_step_fine)[:, 0] - next_step_coarse) / dt
       # elif sgs_model == "fine_correction":
@@ -107,15 +110,16 @@ def main():
 
     # if sgs_model == "fine_correction":
     #   inputs[i] = model_fine.x_hist
-    inputs = inputs.at[i, :, :, 0].set(input_velocity)
-    inputs = inputs.at[i, :, :, 1].set(jnp.tile(x_coords, (model_fine.step_num, 1)))
-    outputs_filter = outputs_filter.at[i].set(output_filter)
-    outputs_correction = outputs_correction.at[i].set(output_correction)
+    inputs[i] = input
+    outputs_filter[i] = output_filter
+    outputs_correction[i] = output_correction
 
   # save the data
-  inputs = inputs.reshape(-1, N, 2)
+  inputs = inputs.reshape(-1, N)
   outputs_correction = outputs_correction.reshape(-1, N)
   outputs_filter = outputs_filter.reshape(-1, N)
+  x_coords_full = x_coords_full.reshape(-1, N2)
+  
   if jnp.any(jnp.isnan(inputs)) or jnp.any(jnp.isnan(outputs_filter)) or\
     jnp.any(jnp.isinf(inputs)) or jnp.any(jnp.isinf(outputs_filter)) or\
     jnp.any(jnp.isnan(outputs_correction)) or jnp.any(jnp.isinf(outputs_correction)):
@@ -134,15 +138,16 @@ def main():
       "creation_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     },
     "data": {
-      "inputs": inputs,
+      "inputs": inputs[..., None],
       "outputs_filter": outputs_filter[..., None],
       "outputs_correction": outputs_correction[..., None],
+      "x_coords": x_coords_full[..., None]
     },
     "config":
     config_dict,
     "readme":
     "This dataset contains the results of a Kuramoto–Sivashinsky PDE solver. "
-    "The 'input' field represents the velocity and spatial coordinates, and the 'output' "
+    "The 'input' field represents the velocity, and the 'output' "
     "field represents the correction from the coarse grid simulation."
   }
 
@@ -158,6 +163,9 @@ def main():
     )
     data_group.create_dataset(
       "outputs_correction", data=data["data"]["outputs_correction"]
+    )
+    data_group.create_dataset(
+      "x_coords", data=data["data"]["x_coords"]
     )
 
     config_group = f.create_group("config")
