@@ -90,6 +90,7 @@ def main():
       u0_ = jnp.exp(-(jnp.linspace(dx_, L - dx_, N) - r0)**2 / r0**2 * 4)
     model_fine.run_simulation(u0, model_fine.CN_FEM)
     model_coarse.run_simulation(u0_, model_coarse.CN_FEM)
+
     # calculating the filter and correction SGS stress
     input_velocity = jax.vmap(res_fn)(model_fine.x_hist)[...,
                                                 0]  # shape = [step_num, N2]
@@ -115,7 +116,6 @@ def main():
   inputs = inputs.reshape(-1, N, 2)
   outputs_correction = outputs_correction.reshape(-1, N)
   outputs_filter = outputs_filter.reshape(-1, N)
-  
   if jnp.any(jnp.isnan(inputs)) or jnp.any(jnp.isnan(outputs_filter)) or\
     jnp.any(jnp.isinf(inputs)) or jnp.any(jnp.isinf(outputs_filter)) or\
     jnp.any(jnp.isnan(outputs_correction)) or jnp.any(jnp.isinf(outputs_correction)):
