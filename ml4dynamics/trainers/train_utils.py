@@ -104,8 +104,8 @@ def run_simulation_coarse_grid_correction(
     correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
       correction = correction[:, :-1]
-    
-    return x_next + (correction[0] * (1 - beta) + beta * expert) * dt
+    tmp = correction[0]
+    return x_next + (tmp * (1 - beta) + beta * expert) * dt
 
   dt = model.dt
   step_num = model.step_num
