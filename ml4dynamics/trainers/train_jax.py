@@ -279,34 +279,20 @@ def main():
         if not is_aug:
           """a-posteriori evaluation"""
           if type_ == "pad":
-              if x.ndim == 3:
-                  x_ = augment_inputs_fn(x[:, :-1])
-                  x_ = jnp.concatenate(
-                      [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
-                  )
-              elif x.ndim == 4:
-                  x_ = augment_inputs_fn(x[:, :-1, :])
-                  x_ = jnp.concatenate(
-                      [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-2], x_.shape[-1]))], axis=1
-                  )
+            x_ = augment_inputs_fn(x[:, :-1])
+            x_ = jnp.concatenate(
+                [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
+            )
           else:
-              x_ = augment_inputs_fn(x)
-          if x.ndim == 3:
-              x_ = x_.reshape(-1, x_.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
-          elif x.ndim == 4:
-              x_ = x_.reshape(-1, x_.shape[-2], x_.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:3]), -1)
+            x_ = augment_inputs_fn(x)
+          x_ = x_.reshape(-1, x_.shape[-1])
+          return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
         else:
-          if x.ndim == 3:
-              x_ = x.reshape(-1, x.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:2]), -1)
-          elif x.ndim == 4:
-              x_ = x.reshape(-1, x.shape[-2], x.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:3]), -1)
+          x_ = x.reshape(-1, x.shape[-1])
+          return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:2]), -1)
 
       inputs_ = inputs_[..., 0:1]
-
+      
     # a-priori evaluation of the regression problem
     if mode == "ae":
       utils.eval_a_priori(
