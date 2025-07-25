@@ -63,7 +63,6 @@ def main():
       
   x_coords_full = jnp.tile(x_coords[None, None, :], (case_num, model_fine.step_num, 1))
 
-
   for i in range(case_num):
     print(i)
     rng, key = random.split(rng)
@@ -118,8 +117,7 @@ def main():
   inputs = inputs.reshape(-1, N)
   outputs_correction = outputs_correction.reshape(-1, N)
   outputs_filter = outputs_filter.reshape(-1, N)
-  x_coords_full = x_coords_full.reshape(-1, N2)
-  
+  x_coords_full = x_coords_full.reshape(-1, N2) 
   if jnp.any(jnp.isnan(inputs)) or jnp.any(jnp.isnan(outputs_filter)) or\
     jnp.any(jnp.isinf(inputs)) or jnp.any(jnp.isinf(outputs_filter)) or\
     jnp.any(jnp.isnan(outputs_correction)) or jnp.any(jnp.isinf(outputs_correction)):
