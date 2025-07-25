@@ -26,6 +26,7 @@ sim:
   rt: 1
   init_scale: 1.
   BC: Dirichlet-Neumann
+  filter_type: gaussian  # box, gaussian, spectral
   # BC: periodic
   seed: 123
   case_num: 10       # number of simulations to perform

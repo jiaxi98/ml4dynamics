@@ -524,7 +524,32 @@ def eval_a_priori(
     loss = jnp.mean((predict - jnp.array(batch_outputs))**2)
     total_loss += loss
     count += 1
-  print(f"train loss: {total_loss/count:.4e}")
+  train_loss = float(total_loss/count)
+  print(f"train loss: {train_loss:.4e}")
+  
+  # Save train_loss to results/train_losses.yaml
+  import os
+  import yaml
+  os.makedirs("results", exist_ok=True)
+  
+  # Read current config to get filter_type
+  with open("config/ks.yaml", "r") as f:
+    config = yaml.safe_load(f)
+  filter_type = config["sim"]["filter_type"]
+  
+  # Load existing train losses or create new dict
+  train_losses_path = "results/train_losses.yaml"
+  if os.path.exists(train_losses_path):
+    with open(train_losses_path, "r") as f:
+      train_losses = yaml.safe_load(f) or {}
+  else:
+    train_losses = {}
+  
+  # Save this filter's train loss
+  train_losses[filter_type] = train_loss
+  with open(train_losses_path, "w") as f:
+    yaml.dump(train_losses, f)
+  
   total_loss = 0
   count = 0
   for batch_inputs, batch_outputs in test_dataloader:
@@ -575,6 +600,7 @@ def eval_a_priori(
     #   im_array, (12, 6), title_array1 + title_array2,
     #   f"results/fig/dataset1.png", 100
     # )
+
   plt.hist(
     inputs.reshape(-1), bins=100, density=True, alpha=0.3, label="inputs"
   )
@@ -861,12 +887,50 @@ def eval_a_posteriori(
         second_moment_list[~np.isnan(second_moment_list).any(axis=1)], axis=0
       )
     )
+    
+    # Save a posteriori metrics to results/aposteriori_metrics.yaml
+    import os
+    import yaml
+    os.makedirs("results", exist_ok=True)
+    
+    # Read current config to get filter_type
+    with open("config/ks.yaml", "r") as f:
+      config = yaml.safe_load(f)
+    filter_type = config["sim"]["filter_type"]
+    
+    # Get final values from the metric lists (last sample)
+    final_l2 = l2_list[-1] if len(l2_list) > 0 else [float('nan'), float('nan')]
+    final_first_moment = first_moment_list[-1] if len(first_moment_list) > 0 else [float('nan'), float('nan')]
+    final_second_moment = second_moment_list[-1] if len(second_moment_list) > 0 else [float('nan'), float('nan')]
+    
+    # Load existing a posteriori metrics or create new dict
+    aposteriori_path = "results/aposteriori_metrics.yaml"
+    if os.path.exists(aposteriori_path):
+      with open(aposteriori_path, "r") as f:
+        aposteriori_metrics = yaml.safe_load(f) or {}
+    else:
+      aposteriori_metrics = {}
+    
+    # Save this filter's a posteriori metrics
+    aposteriori_metrics[filter_type] = {
+      "l2_baseline": float(final_l2[0]),
+      "l2_ours": float(final_l2[1]),
+      "first_moment_baseline": float(final_first_moment[0]),
+      "first_moment_ours": float(final_first_moment[1]),
+      "second_moment_baseline": float(final_second_moment[0]),
+      "second_moment_ours": float(final_second_moment[1]),
+    }
+    
+    with open(aposteriori_path, "w") as f:
+      yaml.dump(aposteriori_metrics, f)
+  
   viz_utils.plot_stats_aux(
     np.arange(inputs.shape[0]) * model.dt,
     [inputs[..., 0], model.x_hist, x_hist[..., 0]],
     ["truth", "baseline", "ours"],
     f"results/fig/{fig_name}_stats.png",
   )
+
   breakpoint()
   return x_hist
 
