@@ -164,6 +164,7 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
 
   return jnp.concatenate(tmp, axis=-1)
 
+
 def create_fine_coarse_simulator(config_dict: ml_collections.ConfigDict):
 
   config = Box(config_dict)
@@ -638,6 +639,7 @@ def eval_a_posteriori(
   t_array = np.linspace(0, model.T, model.step_num)
   stats_test = True
   if not stats_test:
+    """Test with the trajectory in the dataset"""
     start = time()
     inputs = inputs[:step_num]
     outputs = outputs[:step_num]
@@ -646,6 +648,12 @@ def eval_a_posteriori(
     elif config.case == "ks":
       model.run_simulation(inputs[0, :, 0], iter_)
     x_hist = run_simulation(inputs[0])
+    # NOTE: for general a-posteriori test
+    # u_fft = jnp.zeros((2, nx, nx))
+    # u_fft = u_fft.at[:, :10, :10].set(
+    #   random.normal(key=random.PRNGKey(0), shape=(2, 10, 10))
+    # )
+    # uv0 = jnp.real(jnp.fft.fftn(u_fft, axes=(1, 2))) / nx
     print(f"simulation takes {time() - start:.2f}s...")
     if jnp.any(jnp.isnan(x_hist)) or jnp.any(jnp.isinf(x_hist)):
       print("similation contains NaN!")
@@ -654,9 +662,23 @@ def eval_a_posteriori(
       jnp.mean(jnp.linalg.norm(inputs - model.x_hist[..., None], axis=(1, 2)))
     )
     print("ours:", jnp.mean(jnp.linalg.norm(inputs - x_hist, axis=(1, 2))))
+    # print(jnp.mean(
+    #   jnp.linalg.norm(
+    #     jax.vmap(res_fn)(model_fine.x_hist[..., None])
+    #     - model_coarse.x_hist[..., None],
+    #     axis = (1, 2)
+    #   )
+    # ))
+    # print(jnp.mean(
+    #   jnp.linalg.norm(
+    #     jax.vmap(res_fn)(model_fine.x_hist[..., None]) - x_hist,
+    #     axis = (1, 2)
+    #   )
+    # ))
     x_hist = jnp.where(jnp.abs(x_hist) < 5, x_hist, 5)
     model.x_hist = jnp.where(jnp.abs(model.x_hist) < 5, model.x_hist, 5)
 
+    # visualization
     if dim == 1 and _plot:
 
       im_list = [
@@ -692,6 +714,15 @@ def eval_a_posteriori(
           model.x_hist[index_array[j]]
         im_array[4, j] = inputs[index_array[j], ..., 0] -\
           x_hist[index_array[j], ..., 0]
+        # im_array[0, j] = res_fn(
+        #   model_fine.x_hist[index_array[j], ..., None]
+        # )[..., 0]
+        # im_array[2, j] = res_fn(
+        #   model_fine.x_hist[index_array[j], ..., None]
+        # )[..., 0] - model_coarse.x_hist[index_array[j]]
+        # im_array[4, j] = res_fn(
+        #   model_fine.x_hist[index_array[j], ..., None]
+        # )[..., 0] - x_hist[index_array[j], ..., 0]
       im_list = []
       for j in range(im_array.shape[0] * im_array.shape[1]):
         im_list.append(im_array[j // n_plot, j % n_plot])
@@ -728,6 +759,7 @@ def eval_a_posteriori(
           ["truth", "baseline", "ours"], fig_name
         )
   else:
+    """Statistical test to obtain the error bar"""
     n_sample = 10
     rng = random.PRNGKey(1000)
     res_fn, _ = res_int_fn(config_dict)
@@ -745,10 +777,17 @@ def eval_a_posteriori(
       rng, key = random.split(rng)
       r0 = random.uniform(key) * 20 + 44
       if config.sim.BC == "periodic":
+        # u0 = model_fine.attractor + model_fine.init_scale * random.normal(key) *\
+        #   jnp.sin(10 * jnp.pi * jnp.linspace(0, L - L/N1, N1) / L)
         r0 = random.uniform(key) * 20 + 44
         u0 = jnp.exp(-(jnp.linspace(0, L - L / N1, N1) - r0)**2 / r0**2 * 4)
       elif config.sim.BC == "Dirichlet-Neumann":
         x = jnp.linspace(dx, L - dx, N1 - 1)
+        # different choices of initial conditions
+        # u0 = model_fine.attractor + init_scale * random.normal(key) *\
+        #   jnp.sin(10 * jnp.pi * x / L)
+        # u0 = random.uniform(key) * jnp.sin(8 * jnp.pi * x / 128) +\
+        #   random.uniform(rng) * jnp.sin(16 * jnp.pi * x / 128)
         r0 = random.uniform(key) * 20 + 44
         u0 = jnp.exp(-(x - r0)**2 / r0**2 * 4)
       model_fine.run_simulation(u0, model_fine.CN_FEM)
@@ -789,6 +828,15 @@ def eval_a_posteriori(
     l2_list = np.array(l2_list)
     first_moment_list = np.array(first_moment_list)
     second_moment_list = np.array(second_moment_list)
+    # print(np.mean(l2_list, axis=0), ", ", np.std(l2_list, axis=0))
+    # print(
+    #   np.mean(first_moment_list, axis=0), ", ",
+    #   np.std(first_moment_list, axis=0)
+    # )
+    # print(
+    #   np.mean(second_moment_list, axis=0), ", ",
+    #   np.std(second_moment_list, axis=0)
+    # )
     print(
       np.mean(l2_list[~np.isnan(l2_list).any(axis=1)], axis=0), ", ",
       np.std(l2_list[~np.isnan(l2_list).any(axis=1)], axis=0)
