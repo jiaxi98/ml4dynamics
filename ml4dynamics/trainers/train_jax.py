@@ -23,6 +23,7 @@ def main():
   def train(
     mode: str,
     epochs: int,
+    x_coords: np.ndarray,
   ):
 
     @partial(jax.jit, static_argnums=(3, ))
@@ -130,7 +131,7 @@ def main():
     else:
       fig_name = f"{pde}_{mode}_{arch}"
     augment_inputs_fn = partial(
-      utils.augment_inputs, pde=pde, input_labels=input_labels, model=sim_model
+      utils.augment_inputs, x_coords=x_coords, pde=pde, input_labels=input_labels, model=sim_model
     )
     if mode == "tr":
       # add tangent-space regularization
@@ -355,7 +356,7 @@ def main():
   else:
     batch_size = config.train.batch_size_local
     arch = "mlp"
-  inputs, outputs, train_dataloader, test_dataloader, dataset = utils.load_data(
+  inputs, outputs, train_dataloader, test_dataloader, dataset, x_coords = utils.load_data(
     config_dict, batch_size
   )
   print(f"finis loading data with {time() - start:.2f}s...")
@@ -367,7 +368,7 @@ def main():
 
   for _ in modes_array:
     print(f"Training {_}...")
-    train(_, epochs)
+    train(_, epochs, x_coords)
 
 
 if __name__ == "__main__":
