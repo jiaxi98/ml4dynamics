@@ -53,8 +53,8 @@ train:
 - local
 ```yaml
 train:
-  # input: ["u", "u_x", "u_xx", "x"]
-  input: 4
+  input: ["u", "u_x", "u_xx", "x"]
+  # input: 4
   # input: global
 ```
 Notice for local training, two choices to specify the input features are provided.
