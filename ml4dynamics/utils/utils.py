@@ -72,10 +72,11 @@ def load_data(
       outputs = h5f["data"]["outputs"][()]
     else:
       outputs = h5f["data"][f"outputs_{sgs}"][()]
+    x_coords = h5f["data"]["x_coords"][()]
 
   if config.train.input != "global":
     _, model = create_fine_coarse_simulator(config_dict)
-    inputs = np.array(augment_inputs(inputs, pde, config.train.input, model))
+    inputs = np.array(augment_inputs(inputs, x_coords, pde, config.train.input, model))
   # if mode == "torch":
   #   inputs = inputs.transpose(0, 3, 1, 2)
   #   outputs = outputs.transpose(0, 3, 1, 2)
@@ -114,10 +115,10 @@ def load_data(
     shuffle=True  # , num_workers=num_workers
   )
   print("inputs shape:", inputs.shape)
-  return inputs, outputs, train_dataloader, test_dataloader, dataset
+  return inputs, outputs, train_dataloader, test_dataloader, dataset, x_coords
 
 
-def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
+def augment_inputs(inputs: jnp.ndarray, x_coords: jnp.ndarray, pde: str, input_labels, model):
   """This function is used both at loading the data and inference time"""
 
   if isinstance(input_labels, int):
@@ -150,7 +151,9 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
       if "u_xxxx" in input_labels:
         tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
       if "x" in input_labels: 
-        tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
+        spatial_coords = x_coords[0:1]
+        x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
+        tmp.append(x_coords)
     elif pde == "ns_hit":
       if "u" in input_labels:
         tmp.append(inputs)
