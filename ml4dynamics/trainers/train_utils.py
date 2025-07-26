@@ -37,7 +37,6 @@ def run_simulation_fine_grid_correction(
     x_next = int_fn(x_res)
     if type_ == "pad":
       x = jnp.concatenate([x, jnp.zeros((1, 1))], axis=0)
-    
     correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
       correction = correction[:, :-1]
@@ -100,7 +99,6 @@ def run_simulation_coarse_grid_correction(
     x_next = _iter(x)
     if type_ == "pad":
       x = jnp.concatenate([x, jnp.zeros((1, 1))], axis=0)
-    
     correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
       correction = correction[:, :-1]
@@ -127,7 +125,6 @@ def run_simulation_sgs(
     x_next = _iter(x)
     if type_ == "pad":
       x = jnp.concatenate([x, jnp.zeros((1, 1))], axis=0)
-    
     correction = forward_fn(x.reshape(1, *x.shape))
     if type_ == "pad":
       correction = correction[:, :-1]
