@@ -28,7 +28,7 @@ sim:
   BC: Dirichlet-Neumann
   # BC: periodic
   seed: 123
-  case_num: 2       # number of simulations to perform
+  case_num: 10       # number of simulations to perform
   warm_up: 200      # warm up step for simulation
   patience: 5       # patience for NaN simulation
   writeInterval: 2
