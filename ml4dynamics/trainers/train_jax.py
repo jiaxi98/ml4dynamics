@@ -118,7 +118,6 @@ def main():
     train_state, schedule = utils.prepare_unet_train_state(
       config_dict, load_dict, _global, True, input_dim
     )
-    
     flat_params = traverse_util.flatten_dict(train_state.params)
     total_params = sum(
       jax.tree_util.tree_map(lambda x: x.size, flat_params).values()
@@ -314,7 +313,6 @@ def main():
         fig_name=f"reg_{fig_name}",
       )
       return
-
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=True)
     utils.eval_a_priori(
