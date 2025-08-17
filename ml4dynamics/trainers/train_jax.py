@@ -286,12 +286,12 @@ def main():
         if not is_aug:
           """a-posteriori evaluation"""
           if type_ == "pad":
-              x_ = augment_inputs_fn(x[:, :-1])
+            x_ = augment_inputs_fn(x[:, :-1])
             x_ = jnp.concatenate(
               [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
             )
           else:
-              x_ = augment_inputs_fn(x)
+            x_ = augment_inputs_fn(x)
           x_ = x_.reshape(-1, x_.shape[-1])
           return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
         else:
