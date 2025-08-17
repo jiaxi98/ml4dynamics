@@ -120,7 +120,9 @@ def load_data(
   return inputs, outputs, train_dataloader, test_dataloader, dataset, x_coords
 
 
-def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
+def augment_inputs(
+  inputs: jnp.ndarray, x_coords: jnp.ndarray, pde: str, input_labels, model
+):
     """This function is used both at loading the data and inference time"""
 
     if hasattr(input_labels, '__iter__') and any(isinstance(x, int) for x in input_labels) and any(isinstance(x, str) for x in input_labels):
@@ -132,22 +134,15 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
             else:
                 raise Exception("u is not in input_labels")
             if "u_x" in input_labels:
-                if inputs.ndim == 3:
-                    tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
-                elif inputs.ndim == 4:
-                    tmp.append(jnp.einsum("ij, abjk -> abik", model.L1, inputs))
+              tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
             if "u_xx" in input_labels:
-                if inputs.ndim == 3:
-                    tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
-                elif inputs.ndim == 4:
-                    tmp.append(jnp.einsum("ij, abjk -> abik", model.L2, inputs))
+              tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
             if "u_xxxx" in input_labels:
-                if inputs.ndim == 3:
-                    tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
-                elif inputs.ndim == 4:
-                    tmp.append(jnp.einsum("ij, abjk -> abik", model.L4, inputs))
-            if "x" in input_labels: 
-                tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
+              tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
+            if "x" in input_labels:
+              spatial_coords = x_coords[0:1]
+              x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
+              tmp.append(x_coords)
         elif pde == "ns_hit":
             if "u" in input_labels:
                 tmp.append(inputs)
@@ -169,39 +164,19 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
             raise Exception("Size of stencils must be odd")
         
         for i in range(stencil_size // 2):
-            if inputs.ndim == 3:
-                rolled_right = jnp.roll(inputs, i + 1, axis=1)
-                rolled_right = rolled_right.at[:, :i + 1].set(0)
-                tmp.append(rolled_right)
-                rolled_left = jnp.roll(inputs, -(i + 1), axis=1)
-                rolled_left = rolled_left.at[:, -i - 1:].set(0)
-                tmp.append(rolled_left)
-            elif inputs.ndim == 4:
-                rolled_right = jnp.roll(inputs, i + 1, axis=2)
-                rolled_right = rolled_right.at[:, :, :i + 1].set(0)
-                tmp.append(rolled_right)
-                rolled_left = jnp.roll(inputs, -(i + 1), axis=2)
-                rolled_left = rolled_left.at[:, :, -i - 1:].set(0)
-                tmp.append(rolled_left)
+          tmp.append(jnp.roll(inputs, i + 1, axis=1))
+          tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
+          tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
+          tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
     elif isinstance(input_labels, int):
         tmp = [inputs]
         if input_labels % 2 != 1:
             raise Exception("Size of stencils must be odd")
         for i in range(input_labels // 2):
-            if inputs.ndim == 3:
-                rolled_right = jnp.roll(inputs, i + 1, axis=1)
-                rolled_right = rolled_right.at[:, :i + 1].set(0)
-                tmp.append(rolled_right)
-                rolled_left = jnp.roll(inputs, -(i + 1), axis=1)
-                rolled_left = rolled_left.at[:, -i - 1:].set(0)
-                tmp.append(rolled_left)
-            elif inputs.ndim == 4:
-                rolled_right = jnp.roll(inputs, i + 1, axis=2)
-                rolled_right = rolled_right.at[:, :, :i + 1].set(0)
-                tmp.append(rolled_right)
-                rolled_left = jnp.roll(inputs, -(i + 1), axis=2)
-                rolled_left = rolled_left.at[:, :, -i - 1:].set(0)
-                tmp.append(rolled_left)
+          tmp.append(jnp.roll(inputs, i + 1, axis=1))
+          tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
+          tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
+          tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
     else:
         tmp = []
         if pde == "ks":
@@ -210,22 +185,15 @@ def augment_inputs(inputs: jnp.ndarray, pde: str, input_labels, model):
             else:
                 raise Exception("u is not in input_labels")
             if "u_x" in input_labels:
-                if inputs.ndim == 3:
-                    tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
-                elif inputs.ndim == 4:
-                    tmp.append(jnp.einsum("ij, abjk -> abik", model.L1, inputs))
+              tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
             if "u_xx" in input_labels:
-                if inputs.ndim == 3:
-                    tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
-                elif inputs.ndim == 4:
-                    tmp.append(jnp.einsum("ij, abjk -> abik", model.L2, inputs))
+              tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
             if "u_xxxx" in input_labels:
-                if inputs.ndim == 3:
-                    tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
-                elif inputs.ndim == 4:
-                    tmp.append(jnp.einsum("ij, abjk -> abik", model.L4, inputs))
-            if "x" in input_labels: 
-                tmp.append(inputs[..., -1:] if inputs.shape[-1] > 1 else inputs)
+              tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
+            if "x" in input_labels:
+              spatial_coords = x_coords[0:1]
+              x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
+              tmp.append(x_coords)
         elif pde == "ns_hit":
             if "u" in input_labels:
                 tmp.append(inputs)
