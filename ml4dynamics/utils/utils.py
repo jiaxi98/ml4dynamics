@@ -126,84 +126,86 @@ def augment_inputs(
     """This function is used both at loading the data and inference time"""
 
     if hasattr(input_labels, '__iter__') and any(isinstance(x, int) for x in input_labels) and any(isinstance(x, str) for x in input_labels):
-        tmp = []
-        stencil_size = None
-        if pde == "ks":
-            if "u" in input_labels:
-                tmp.append(inputs)
-            else:
-                raise Exception("u is not in input_labels")
-            if "u_x" in input_labels:
-              tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
-            if "u_xx" in input_labels:
-              tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
-            if "u_xxxx" in input_labels:
-              tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
-            if "x" in input_labels:
-              spatial_coords = x_coords[0:1]
-              x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
-              tmp.append(x_coords)
-        elif pde == "ns_hit":
-            if "u" in input_labels:
-                tmp.append(inputs)
-            if "u_x" in input_labels:
-                what = jnp.fft.rfft2(inputs, axes=(1, 2))
-                psi_hat = -what[..., 0] / model.laplacian_[None]
-                dpsidx = jnp.fft.irfft2(1j * psi_hat * model.kx[None], axes=(1, 2))
-                dpsidy = jnp.fft.irfft2(1j * psi_hat * model.ky[None], axes=(1, 2))
-                tmp.append(dpsidy)
-                tmp.append(-dpsidx)
-        for label in input_labels:
-            if isinstance(label, int):
-                stencil_size = label
-                break
+      tmp = []
+      stencil_size = None
+      if pde == "ks":
+        if "u" in input_labels:
+          tmp.append(inputs)
+        else:
+          raise Exception("u is not in input_labels")
+        if "u_x" in input_labels:
+          tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
+        if "u_xx" in input_labels:
+          tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
+        if "u_xxxx" in input_labels:
+          tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
+        if "x" in input_labels:
+          spatial_coords = x_coords[0:1]
+          x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
+          tmp.append(x_coords)
+      elif pde == "ns_hit":
+        if "u" in input_labels:
+          tmp.append(inputs)
+        if "u_x" in input_labels:
+          what = jnp.fft.rfft2(inputs, axes=(1, 2))
+          psi_hat = -what[..., 0] / model.laplacian_[None]
+          dpsidx = jnp.fft.irfft2(1j * psi_hat * model.kx[None], axes=(1, 2))
+          dpsidy = jnp.fft.irfft2(1j * psi_hat * model.ky[None], axes=(1, 2))
+          tmp.append(dpsidy)
+          tmp.append(-dpsidx)
+      for label in input_labels:
+        if isinstance(label, int):
+          stencil_size = label
+          break
         
-        if stencil_size is None:
-            raise Exception("No stencil size found in input_labels")
-        if stencil_size % 2 != 1:
-            raise Exception("Size of stencils must be odd")
+      if stencil_size is None:
+        raise Exception("No stencil size found in input_labels")
+      if stencil_size % 2 != 1:
+        raise Exception("Size of stencils must be odd")
         
-        for i in range(stencil_size // 2):
-          tmp.append(jnp.roll(inputs, i + 1, axis=1))
-          tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
-          tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
-          tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
+      for i in range(stencil_size // 2):
+        tmp.append(jnp.roll(inputs, i + 1, axis=1))
+        tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
+        tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
+        tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
     elif isinstance(input_labels, int):
-        tmp = [inputs]
-        if input_labels % 2 != 1:
-            raise Exception("Size of stencils must be odd")
-        for i in range(input_labels // 2):
-          tmp.append(jnp.roll(inputs, i + 1, axis=1))
-          tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
-          tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
-          tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
+      """use stencils as input"""
+      
+      tmp = [inputs]
+      if input_labels % 2 != 1:
+        raise Exception("Size of stencils must be odd")
+      for i in range(input_labels // 2):
+        tmp.append(jnp.roll(inputs, i + 1, axis=1))
+        tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
+        tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
+        tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
     else:
-        tmp = []
-        if pde == "ks":
-            if "u" in input_labels:
-                tmp.append(inputs)
-            else:
-                raise Exception("u is not in input_labels")
-            if "u_x" in input_labels:
-              tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
-            if "u_xx" in input_labels:
-              tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
-            if "u_xxxx" in input_labels:
-              tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
-            if "x" in input_labels:
-              spatial_coords = x_coords[0:1]
-              x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
-              tmp.append(x_coords)
+      tmp = []
+      if pde == "ks":
+        if "u" in input_labels:
+          tmp.append(inputs)
+        else:
+          raise Exception("u is not in input_labels")
+        if "u_x" in input_labels:
+          tmp.append(jnp.einsum("ij, ajk -> aik", model.L1, inputs))
+        if "u_xx" in input_labels:
+          tmp.append(jnp.einsum("ij, ajk -> aik", model.L2, inputs))
+        if "u_xxxx" in input_labels:
+          tmp.append(jnp.einsum("ij, ajk -> aik", model.L4, inputs))
+        if "x" in input_labels:
+          spatial_coords = x_coords[0:1]
+          x_coords = jnp.tile(spatial_coords, (inputs.shape[0], 1, 1))
+          tmp.append(x_coords)
         elif pde == "ns_hit":
-            if "u" in input_labels:
-                tmp.append(inputs)
-            if "u_x" in input_labels:
-                what = jnp.fft.rfft2(inputs, axes=(1, 2))
-                psi_hat = -what[..., 0] / model.laplacian_[None]
-                dpsidx = jnp.fft.irfft2(1j * psi_hat * model.kx[None], axes=(1, 2))
-                dpsidy = jnp.fft.irfft2(1j * psi_hat * model.ky[None], axes=(1, 2))
-                tmp.append(dpsidy)
-                tmp.append(-dpsidx)
+          if "u" in input_labels:
+            tmp.append(inputs)
+          if "u_x" in input_labels:
+            what = jnp.fft.rfft2(inputs, axes=(1, 2))
+            psi_hat = -what[..., 0] / model.laplacian_[None]
+            dpsidx = jnp.fft.irfft2(1j * psi_hat * model.kx[None], axes=(1, 2))
+            dpsidy = jnp.fft.irfft2(1j * psi_hat * model.ky[None], axes=(1, 2))
+            tmp.append(dpsidy)
+            tmp.append(-dpsidx)
 
     return jnp.concatenate(tmp, axis=-1)
 
