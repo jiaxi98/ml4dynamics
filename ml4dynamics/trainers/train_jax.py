@@ -113,9 +113,11 @@ def main():
     #   """TODO: no architecture check for the models"""
     #   load_dict = None
     load_dict = None
+    input_dim = inputs.shape[-1] if not _global else None
     train_state, schedule = utils.prepare_unet_train_state(
-      config_dict, load_dict, _global
+        config_dict, load_dict, _global, True, input_dim
     )
+    
     flat_params = traverse_util.flatten_dict(train_state.params)
     total_params = sum(
       jax.tree_util.tree_map(lambda x: x.size, flat_params).values()
@@ -130,7 +132,10 @@ def main():
     else:
       fig_name = f"{pde}_{mode}_{arch}"
     augment_inputs_fn = partial(
-      utils.augment_inputs, pde=pde, input_labels=input_labels, model=sim_model
+    utils.augment_inputs, 
+    pde=pde, 
+    input_labels=input_labels, 
+    model=sim_model
     )
     if mode == "tr":
       lambda_ = config.train.lambda_
@@ -249,7 +254,7 @@ def main():
           outputs_ = outputs[:, :-1]
     one_traj_length = inputs.shape[0] // config.sim.case_num
     train_state, schedule = utils.prepare_unet_train_state(
-      config_dict, ckpt_path, _global, False
+      config_dict, ckpt_path, _global, False, input_dim
     )
     if _global:
 
@@ -371,8 +376,18 @@ def main():
   else:
     batch_size = config.train.batch_size_local
     arch = "mlp"
+    
+  stencil = 3
+  if isinstance(input_labels, int):
+      stencil = input_labels
+  elif isinstance(input_labels, list):
+      for item in input_labels:
+          if isinstance(item, int):
+              stencil = item
+              break
+              
   inputs, outputs, train_dataloader, test_dataloader, dataset = utils.load_data(
-    config_dict, batch_size
+    config_dict, batch_size, stencil
   )
   print(f"finis loading data with {time() - start:.2f}s...")
   print(f"Problem type: {pde}")
