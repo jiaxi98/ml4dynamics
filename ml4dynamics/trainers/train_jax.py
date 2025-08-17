@@ -315,9 +315,21 @@ def main():
       )
       return
 
-    # a-posteriori evaluation using hybrid simulator
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=True)
+    utils.eval_a_priori(
+      forward_fn=forward_fn,
+      train_dataloader=train_dataloader,
+      test_dataloader=test_dataloader,
+      inputs=inputs,
+      outputs=outputs,
+      dim=dim,
+      fig_name=f"reg_{fig_name}",
+    )
+
+    # a-posteriori evaluation using hybrid simulator
+    if not _global:
+      forward_fn = partial(_forward_fn, is_aug=False)
     utils.eval_a_posteriori(
       config_dict=config_dict,
       forward_fn=forward_fn,
@@ -328,30 +340,6 @@ def main():
       fig_name=f"sim_{fig_name}",
       _plot=True,
     )
-    if not _global:
-      forward_fn = partial(_forward_fn, is_aug=False)
-      if inputs_.ndim == 3:
-          utils.eval_a_posteriori(
-              config_dict=config_dict,
-              forward_fn=forward_fn,
-              inputs=inputs_[:one_traj_length],
-              outputs=outputs_[:one_traj_length],
-              dim=dim,
-              beta=0.0,
-              fig_name=f"sim_{fig_name}",
-              _plot=True,
-          )
-      elif inputs_.ndim == 4:
-          utils.eval_a_posteriori(
-              config_dict=config_dict,
-              forward_fn=forward_fn,
-              inputs=inputs_[:one_traj_length, :, :, :],
-              outputs=outputs_[:one_traj_length, :, :, :],
-              dim=dim,
-              beta=0.0,
-              fig_name=f"sim_{fig_name}",
-              _plot=True,
-          )
 
   parser = argparse.ArgumentParser()
   parser.add_argument(
