@@ -23,6 +23,7 @@ def main():
   def train(
     mode: str,
     epochs: int,
+    x_coords: np.ndarray,
   ):
 
     @partial(jax.jit, static_argnums=(3, ))
@@ -115,7 +116,7 @@ def main():
     load_dict = None
     input_dim = inputs.shape[-1] if not _global else None
     train_state, schedule = utils.prepare_unet_train_state(
-        config_dict, load_dict, _global, True, input_dim
+      config_dict, load_dict, _global, True, input_dim
     )
     
     flat_params = traverse_util.flatten_dict(train_state.params)
@@ -132,12 +133,14 @@ def main():
     else:
       fig_name = f"{pde}_{mode}_{arch}"
     augment_inputs_fn = partial(
-    utils.augment_inputs, 
-    pde=pde, 
-    input_labels=input_labels, 
-    model=sim_model
+      utils.augment_inputs,
+      x_coords=x_coords,
+      pde=pde,
+      input_labels=input_labels,
+      model=sim_model
     )
     if mode == "tr":
+      # add tangent-space regularization
       lambda_ = config.train.lambda_
       ae_train_state, _ = utils.prepare_unet_train_state(
         config_dict, f"ckpts/{pde}/{dataset}_ae_unet.pkl", True, False
@@ -185,6 +188,7 @@ def main():
             -tmp + sim_model.nu * sim_model.laplacian * w_hat
           )
 
+    # training loop
     iters = tqdm(range(epochs))
     loss_hist = []
     for epoch in iters:
@@ -241,6 +245,7 @@ def main():
     plt.savefig(f"results/fig/losshist_{fig_name}.png")
     plt.close()
 
+    # pack the NN for later evaluation
     dim = 2
     inputs_ = inputs
     outputs_ = outputs
@@ -279,35 +284,25 @@ def main():
         global model for the a-posteriori simulation
         """
         if not is_aug:
+          """a-posteriori evaluation"""
           if type_ == "pad":
-              if x.ndim == 3:
-                  x_ = augment_inputs_fn(x[:, :-1])
-                  x_ = jnp.concatenate(
-                      [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
-                  )
-              elif x.ndim == 4:
-                  x_ = augment_inputs_fn(x[:, :-1, :])
-                  x_ = jnp.concatenate(
-                      [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-2], x_.shape[-1]))], axis=1
-                  )
+              x_ = augment_inputs_fn(x[:, :-1])
+            x_ = jnp.concatenate(
+              [x_, jnp.zeros((x_.shape[0], 1, x_.shape[-1]))], axis=1
+            )
           else:
               x_ = augment_inputs_fn(x)
-          if x.ndim == 3:
-              x_ = x_.reshape(-1, x_.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
-          elif x.ndim == 4:
-              x_ = x_.reshape(-1, x_.shape[-2], x_.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:3]), -1)
+          x_ = x_.reshape(-1, x_.shape[-1])
+          return train_state.apply_fn(train_state.params, x_).reshape(x.shape)
         else:
-          if x.ndim == 3:
-              x_ = x.reshape(-1, x.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:2]), -1)
-          elif x.ndim == 4:
-              x_ = x.reshape(-1, x.shape[-2], x.shape[-1])
-              return train_state.apply_fn(train_state.params, x_).reshape(*(x.shape[:3]), -1)
+          """a-priori evaluation"""
+          x_ = x.reshape(-1, x.shape[-1])
+          return train_state.apply_fn(train_state.params,
+                                      x_).reshape(*(x.shape[:2]), -1)
 
       inputs_ = inputs_[..., 0:1]
 
+    # a-priori evaluation of the regression problem
     if mode == "ae":
       utils.eval_a_priori(
         forward_fn=forward_fn,
@@ -319,16 +314,19 @@ def main():
         fig_name=f"reg_{fig_name}",
       )
       return
+
+    # a-posteriori evaluation using hybrid simulator
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=True)
-    utils.eval_a_priori(
+    utils.eval_a_posteriori(
+      config_dict=config_dict,
       forward_fn=forward_fn,
-      train_dataloader=train_dataloader,
-      test_dataloader=test_dataloader,
-      inputs=inputs,
-      outputs=outputs,
+      inputs=inputs_[:one_traj_length],
+      outputs=outputs_[:one_traj_length],
       dim=dim,
-      fig_name=f"reg_{fig_name}",
+      beta=0.0,
+      fig_name=f"sim_{fig_name}",
+      _plot=True,
     )
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=False)
@@ -363,6 +361,7 @@ def main():
   with open(f"config/{args.config}.yaml", "r") as file:
     config_dict = yaml.safe_load(file)
 
+  # load dataset
   config = Box(config_dict)
   pde = config.case
   input_labels = config.train.input
@@ -376,7 +375,7 @@ def main():
   else:
     batch_size = config.train.batch_size_local
     arch = "mlp"
-  inputs, outputs, train_dataloader, test_dataloader, dataset = utils.load_data(
+  inputs, outputs, train_dataloader, test_dataloader, dataset, x_coords = utils.load_data(
     config_dict, batch_size
   )
   print(f"finis loading data with {time() - start:.2f}s...")
@@ -388,7 +387,7 @@ def main():
 
   for _ in modes_array:
     print(f"Training {_}...")
-    train(_, epochs)
+    train(_, epochs, x_coords)
 
 
 if __name__ == "__main__":
