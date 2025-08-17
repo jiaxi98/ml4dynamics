@@ -376,18 +376,9 @@ def main():
   else:
     batch_size = config.train.batch_size_local
     arch = "mlp"
-    
-  stencil = 3
-  if isinstance(input_labels, int):
-      stencil = input_labels
-  elif isinstance(input_labels, list):
-      for item in input_labels:
-          if isinstance(item, int):
-              stencil = item
-              break
               
   inputs, outputs, train_dataloader, test_dataloader, dataset = utils.load_data(
-    config_dict, batch_size, stencil
+    config_dict, batch_size
   )
   print(f"finis loading data with {time() - start:.2f}s...")
   print(f"Problem type: {pde}")
