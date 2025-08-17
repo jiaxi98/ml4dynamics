@@ -415,7 +415,8 @@ def prepare_unet_train_state(
   config_dict: ml_collections.ConfigDict,
   load_dict: str = None,
   is_global: bool = True,
-  is_training: bool = True
+  is_training: bool = True,
+  input_dim: int = None
 ):
 
   config = Box(config_dict)
@@ -446,16 +447,14 @@ def prepare_unet_train_state(
       if is_global:
         input_features = 1
       else:
-        input_features = inputs_labels if isinstance(inputs_labels, int)\
-          else len(inputs_labels)
+        input_features = input_dim
       output_features = 1
       DIM = 2
     elif config.case == "ks":
       if is_global:
         input_features = 1
       else:
-        input_features = inputs_labels if isinstance(inputs_labels, int)\
-          else len(inputs_labels)
+        input_features = input_dim
       output_features = 1
       DIM = 1
   if load_dict:
