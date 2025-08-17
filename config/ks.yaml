@@ -43,7 +43,7 @@ train:
   sgs: filter
   # sgs: correction
   kernel_size: 3
-  # input: ["u", "u_x", "u_xx"]
+  # input: ["u", "u_x", "u_xx", 3]
   input: 3
   # input: global
   bins: 50
