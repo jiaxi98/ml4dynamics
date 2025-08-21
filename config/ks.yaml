@@ -17,7 +17,7 @@ case: ks
 
 sim:
   nu: 1
-  c: 1.6
+  c: 1.6 #1.6 for non-periodic, 0 for periodic
   T: 400
   dt: .1
   L: 128
@@ -25,6 +25,7 @@ sim:
   rx: 4
   rt: 1
   init_scale: 1.
+  stencil_size: 7
   BC: Dirichlet-Neumann
   # BC: periodic
   seed: 123

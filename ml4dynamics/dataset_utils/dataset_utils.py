@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
 import ml_collections
 from box import Box
 
@@ -27,43 +28,78 @@ def calc_correction(rd_fine, rd_coarse, nx: float, r: int, uv: jnp.ndarray):
   return next_step_fine - next_step_coarse_interp
 
 
+def create_box_filter(N1: int, N2: int, r: int, BC: str, s: int):
+  """Create box filter (averaging) operator
+  
+  Args:
+    N1: fine grid size
+    N2: coarse grid size  
+    r: coarsening ratio
+    BC: boundary condition ("periodic" or "Dirichlet-Neumann")
+    s: stencil size (must be odd)
+  """
+  if s % 2 == 0:
+    raise ValueError("Stencil size must be odd")
+    
+  res_op = jnp.zeros((N2, N1))
+  half_stencil = s // 2
+  
+  if r == 2:
+    # Box filter for r=2 with variable stencil size
+    if BC == "periodic":
+      for i in range(N2):
+        start = i * r
+        for j in range(s):
+          idx = (start + j) % N1  # wrap around domain
+          res_op = res_op.at[i, idx].set(1)
+      res_op /= s / r  
+    else:  # Dirichlet-Neumann - ignore for now
+      raise Exception("Dirichlet-Neumann not implemented for r=2")
+      
+  elif r == 4:
+    if BC == "periodic":
+      for i in range(N2):
+        start = i * r
+        for j in range(s):
+          idx = (start + j) % N1  # wrap around domain
+          res_op = res_op.at[i, idx].set(1)
+      res_op /= s / 4  # normalize to preserve energy scale
+    else:  # Dirichlet-Neumann
+      for i in range(N2):
+        res_op = res_op.at[i, i * r:i * r + s].set(1)
+      res_op /= s / 4
+      
+  elif r == 8:
+    # Box filter for r=8 with variable stencil size
+    if BC == "periodic":
+      for i in range(N2):
+        start = i * r
+        for j in range(s):
+          idx = (start + j) % N1  # wrap around domain
+          res_op = res_op.at[i, idx].set(1)
+      res_op /= s / r  
+    else:  # Dirichlet-Neumann - ignore for now
+      raise Exception("Dirichlet-Neumann not implemented for r=8")
+  
+  return res_op
+
+
 def res_int_fn(config_dict: ml_collections.ConfigDict):
 
   config = Box(config_dict)
   r = config.sim.rx
   if config.case == "ks":
     BC = config.sim.BC
+    s = config.sim.stencil_size  # Get stencil size from config
+    
     if BC == "periodic":
       N1 = config.sim.n
     elif BC == "Dirichlet-Neumann":
       N1 = config.sim.n - 1
     N2 = N1 // r
-    res_op = jnp.zeros((N2, N1))
-    int_op = jnp.zeros((N1, N2))
-    if r == 2:
-      raise Exception("Deprecated...")
-      res_op = res_op.at[jnp.arange(N2), jnp.arange(N2) * r].set(1)
-      res_op = res_op.at[jnp.arange(N2), jnp.arange(N2) * r + 2].set(1)
-    elif r == 4:
-      # stencil = 4
-      # for i in range(N2):
-      #   res_op = res_op.at[i, i * r + 1:i * r + 6].set(1)
-      # res_op = res_op.at[jnp.arange(N2), jnp.arange(N2) * r + 3].set(0)
-      # if BC == "periodic":
-      #   res_op = res_op.at[-1, :r // 2].set(1)
-
-      # stencil = 7
-      for i in range(N2):
-        res_op = res_op.at[i, i * r:i * r + 7].set(1)
-      if BC == "periodic":
-        res_op = res_op.at[-1, :3].set(1)
-      res_op /= 7 / 4
-    elif r == 8:
-      # stencil = 12
-      for i in range(N2):
-        res_op = res_op.at[i, i * r + 3:i * r + 12].set(1)
-      res_op = res_op.at[jnp.arange(N2), jnp.arange(N2) * r + 7].set(0)
-    res_op /= r
+    
+    # Create box filter using adaptive stencil size
+    res_op = create_box_filter(N1, N2, r, BC, s)
     int_op = jnp.linalg.pinv(res_op)
     assert jnp.allclose(res_op @ int_op, jnp.eye(N2))
     assert jnp.allclose(res_op.sum(axis=-1), jnp.ones(N2))

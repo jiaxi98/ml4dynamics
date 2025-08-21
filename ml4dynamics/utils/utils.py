@@ -21,6 +21,8 @@ from matplotlib import cm
 from matplotlib import pyplot as plt
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
+import os
+import yaml
 
 from ml4dynamics import dynamics
 from ml4dynamics.dataset_utils.dataset_utils import res_int_fn
@@ -63,7 +65,9 @@ def load_data(
       bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
       nu = config.sim.nu
       c = config.sim.c
-      dataset = f"{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}"
+      r = config.sim.rx
+      s = config.sim.stencil_size
+      dataset = f"{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}.h5"
   # Use work_dir if available (from Hydra config) to handle directory changes
   import os
   if 'work_dir' in config:
@@ -533,12 +537,57 @@ def eval_a_priori(
 
   total_loss = 0
   count = 0
+  all_preds = []
+  all_targets = []
   for batch_inputs, batch_outputs in train_dataloader:
     predict = forward_fn(jnp.array(batch_inputs))
     loss = jnp.mean((predict - jnp.array(batch_outputs))**2)
     total_loss += loss
     count += 1
+    all_preds.append(np.array(predict))
+    all_targets.append(np.array(batch_outputs))
+
+  all_preds = np.concatenate(all_preds, axis=0)
+  all_targets = np.concatenate(all_targets, axis=0)
+
+  # === Global MSE and relative MSE calculations ===
+  mse = np.mean((all_preds - all_targets) ** 2)
+  norm_factor = np.mean(all_targets ** 2)
+  rel_mse = mse / (norm_factor + 1e-12)  # Avoid division by zero
+
   print(f"train loss: {total_loss/count:.4e}")
+  print(f"relative MSE: {rel_mse:.4e}")
+
+  # Save train_loss to results/train_losses.pkl
+  os.makedirs("results", exist_ok=True)
+
+  # Read current config to get BC, r and s
+  with open("config/ks.yaml", "r") as f:
+    config = yaml.safe_load(f)
+  bc = "pbc" if config["sim"]["BC"] == "periodic" else "dnbc"
+  r = config["sim"]["r"]
+  s = config["sim"]["s"]
+  
+  #Create compound key that includes BC, r and s
+  key = f"{bc}_r{r}_s{s}"
+
+  #Load exisiting train losses or initialize a new dictionary
+  train_losses_path = "results/train_losses.pkl"
+  if os.path.exists(train_losses_path):
+    with open(train_losses_path, "rb") as f:
+      train_losses = pickle.load(f)
+  else:
+    train_losses = {}
+
+  # Update the train losses dictionary with the new loss
+  train_losses[key] = {
+    'mean': float(mse),
+    'rel_mse_mean': float(rel_mse),
+    'n_samples': len(all_preds)
+  }
+  with open(train_losses_path, "wb") as f:
+    pickle.dump(train_losses, f)
+
   total_loss = 0
   count = 0
   for batch_inputs, batch_outputs in test_dataloader:
@@ -671,7 +720,7 @@ def eval_a_posteriori(
     # uv0 = jnp.real(jnp.fft.fftn(u_fft, axes=(1, 2))) / nx
     print(f"simulation takes {time() - start:.2f}s...")
     if jnp.any(jnp.isnan(x_hist)) or jnp.any(jnp.isinf(x_hist)):
-      print("similation contains NaN!")
+      print("simulation contains NaN!")
     print(
       "baseline:",
       jnp.mean(jnp.linalg.norm(inputs - model.x_hist[..., None], axis=(1, 2)))
@@ -790,14 +839,27 @@ def eval_a_posteriori(
     corr1 = []
     corr2 = []
     avg_length = 1000
+
+
+    # This code should be used normally
+    '''
     for _ in range(n_sample):
       print(f"{_}th sample")
       rng, key = random.split(rng)
       r0 = random.uniform(key) * 20 + 44
+    '''
+
+    # === For Comparing between stencil sizes best to use the same 10 Initial Conditions for consistency ===
+    for ic_idx in range(n_sample):
+      print(f"{ic_idx}th sample")
+      fixed_key = random.PRNGKey(2000 + ic_idx) #Use pseudo-random key for reproducibility
+      r0 = random.uniform(fixed_key) * 20 + 44
+
       if config.sim.BC == "periodic":
         # u0 = model_fine.attractor + model_fine.init_scale * random.normal(key) *\
         #   jnp.sin(10 * jnp.pi * jnp.linspace(0, L - L/N1, N1) / L)
-        r0 = random.uniform(key) * 20 + 44
+        #r0 = random.uniform(key) * 20 + 44
+        r0 = random.uniform(fixed_key) * 20 + 44
         u0 = jnp.exp(-(jnp.linspace(0, L - L / N1, N1) - r0)**2 / r0**2 * 4)
       elif config.sim.BC == "Dirichlet-Neumann":
         x = jnp.linspace(dx, L - dx, N1 - 1)
@@ -813,7 +875,7 @@ def eval_a_posteriori(
       model.run_simulation(res_fn(u0)[..., 0], iter_)
       x_hist = run_simulation(res_fn(u0))
       if jnp.any(jnp.isnan(x_hist)) or jnp.any(jnp.isinf(x_hist)):
-        print("similation contains NaN!")
+        print("simulation contains NaN!")
       baseline_l2 = jnp.mean(jnp.linalg.norm(truth - model.x_hist, axis=(1, )))
       ours_l2 = jnp.mean(jnp.linalg.norm(truth - x_hist[..., 0], axis=(1, )))
       baseline_first_moment = np.mean((truth - model.x_hist)[-avg_length:])
@@ -838,10 +900,19 @@ def eval_a_posteriori(
 
     corr1 = np.array(corr1)
     corr2 = np.array(corr2)
+
+    # Modify fig_name for KS simulations to include r and s
+    if config.case == "ks":
+      r = config.sim.r
+      s = config.sim.stencil_size
+      fig_name_with_params = f"{fig_name}_r{r}_s{s}"
+    else:
+      fig_name_with_params = fig_name
+
     plt.plot(t_array, np.mean(corr1, axis=0), label="baseline")
     plt.plot(t_array, np.mean(corr2, axis=0), label="ours")
     plt.legend()
-    plt.savefig(f"results/fig/{fig_name}_corr.png")
+    plt.savefig(f"results/fig/{fig_name_with_params}_corr.png")
     breakpoint()
     l2_list = np.array(l2_list)
     first_moment_list = np.array(first_moment_list)
@@ -875,11 +946,67 @@ def eval_a_posteriori(
         second_moment_list[~np.isnan(second_moment_list).any(axis=1)], axis=0
       )
     )
+  
+    # Remove NaN rows from the lists. This is necessary to avoid issues with np.std and np.mean
+    l2_valid = l2_list[~np.isnan(l2_list).any(axis=1)]
+    first_moment_valid = first_moment_list[~np.isnan(first_moment_list).any(axis=1)]
+    second_moment_valid = second_moment_list[~np.isnan(second_moment_list).any(axis=1)]
+
+    # Calculate standard deviations
+    l2_std = np.std(l2_valid, axis=0) if len(l2_valid) > 0 else [float('nan'), float('nan')]
+    first_moment_std = np.std(first_moment_valid, axis=0) if len(first_moment_valid) > 0 else [float('nan'), float('nan')]
+    second_moment_std = np.std(second_moment_valid, axis=0) if len(second_moment_valid) > 0 else [float('nan'), float('nan')]
+
+    # Calculate means across all valid samples (for saving to pickle)
+    l2_mean = np.mean(l2_valid, axis=0) if len(l2_valid) > 0 else [float('nan'), float('nan')]
+    first_moment_mean = np.mean(first_moment_valid, axis=0) if len(first_moment_valid) > 0 else [float('nan'), float('nan')]
+    second_moment_mean = np.mean(second_moment_valid, axis=0) if len(second_moment_valid) > 0 else [float('nan'), float('nan')]
+
+    # Save a posteriori metrics to results/aposteriori_metrics.pkl
+    os.makedirs("results", exist_ok=True)
+
+    # Read current config to get filter_type, boundary condition, and stencil size
+    with open("config/ks.yaml", "r") as f:
+      config = yaml.safe_load(f)
+    bc = "pbc" if config["sim"]["BC"] == "periodic" else "dnbc"
+    r = config["sim"]["rx"]
+    s = config["sim"]["stencil_size"]
+
+    #Create compound key that includes BC, r and s
+    key = f"{bc}_r{r}_s{s}"
+
+    # Load existing a posteriori metrics or create new dict
+    aposteriori_path = "results/aposteriori_metrics.pkl"
+    if os.path.exists(aposteriori_path):
+      with open(aposteriori_path, "rb") as f:
+        aposteriori_metrics = pickle.load(f)
+    else:
+      aposteriori_metrics = {}
+
+    # Save this filter's a posteriori metrics (means and stds across all samples)
+    aposteriori_metrics[key] = {
+      "l2_baseline": float(l2_mean[0]),
+      "l2_ours": float(l2_mean[1]),
+      "l2_baseline_std": float(l2_std[0]),
+      "l2_ours_std": float(l2_std[1]),
+      "first_moment_baseline": float(first_moment_mean[0]),
+      "first_moment_ours": float(first_moment_mean[1]),
+      "first_moment_baseline_std": float(first_moment_std[0]),
+      "first_moment_ours_std": float(first_moment_std[1]),
+      "second_moment_baseline": float(second_moment_mean[0]),
+      "second_moment_ours": float(second_moment_mean[1]),
+      "second_moment_baseline_std": float(second_moment_std[0]),
+      "second_moment_ours_std": float(second_moment_std[1]),
+    }
+
+    with open(aposteriori_path, "wb") as f:
+      pickle.dump(aposteriori_metrics, f)
+
   viz_utils.plot_stats_aux(
     np.arange(inputs.shape[0]) * model.dt,
     [inputs[..., 0], model.x_hist, x_hist[..., 0]],
     ["truth", "baseline", "ours"],
-    f"results/fig/{fig_name}_stats.png",
+    f"results/fig/{fig_name_with_params}_stats.png",
   )
   breakpoint()
   return x_hist
