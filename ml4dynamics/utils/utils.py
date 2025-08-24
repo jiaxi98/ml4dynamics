@@ -778,7 +778,7 @@ def eval_a_posteriori(
     Specifically, randomly generated in the initial condition to simulate
     the ground truth trajectory, which is not in the whole dataset (with probability 0).
     """
-    n_sample = 10
+    n_sample = 2
     rng = random.PRNGKey(1000)
     res_fn, _ = res_int_fn(config_dict)
     L = model_fine.Lx
@@ -925,15 +925,42 @@ def eval_a_posteriori(
   #   ["truth", "baseline", "ours"],
   #   f"results/fig/{fig_name}_stats.png",
   # )
-  with open(f"results/data/{config.case}.pkl", "rb") as f:
+  import os
+  if not os.path.exists(f"results/data/database.pkl"):
+    results = {}
+    pickle.dump(results, open(f"results/data/database.pkl", "wb"))
+
+  with open(f"results/data/database.pkl", "rb") as f:
     results = pickle.load(f)
   
-  pickle.dump(
-    [l2_list, first_moment_list, second_moment_list, third_moment_list, 
-     first_moment_traj_list, second_moment_traj_list, third_moment_traj_list,
-     corr1, corr2],
-    open(f"results/data/{config.train.stencil_size}_seed{config.sim.seed}.pkl", "wb")
-  )
+  key = config.case + config.sim.BC + str(config.sim.n) + str(config.sim.seed)
+  if key in results.keys() and ("s"+str(config.train.stencil_size)) in results[key]["method"]:
+    return
+  if key not in results.keys():
+    data = {
+      "method": [], "l2": [], "first moment": [], "second moment": [], "third moment": [],
+      "first moment traj": [], "second moment traj": [], "third moment traj": [], "corr": []
+    }
+    data["method"] += ["baseline"] * n_sample
+    data["l2"] += list(np.array(l2_list)[:, 0])
+    data["first moment"] += list(np.array(first_moment_list)[:, 0])
+    data["second moment"] += list(np.array(second_moment_list)[:, 0])
+    data["third moment"] += list(np.array(third_moment_list)[:, 0])
+    data["first moment traj"] += list(np.array(first_moment_traj_list)[:, 0])
+    data["second moment traj"] += list(np.array(second_moment_traj_list)[:, 0])
+    data["third moment traj"] += list(np.array(third_moment_traj_list)[:, 0])
+    data["corr"] += list(np.array(corr1)[:, 0])
+  data["method"] += ["s"+str(config.train.stencil_size)] * n_sample
+  data["l2"] += list(np.array(l2_list)[:, 1])
+  data["first moment"] += list(np.array(first_moment_list)[:, 1])
+  data["second moment"] += list(np.array(second_moment_list)[:, 1])
+  data["third moment"] += list(np.array(third_moment_list)[:, 1])
+  data["first moment traj"] += list(np.array(first_moment_traj_list)[:, 1])
+  data["second moment traj"] += list(np.array(second_moment_traj_list)[:, 1])
+  data["third moment traj"] += list(np.array(third_moment_traj_list)[:, 1])
+  data["corr"] += list(np.array(corr2)[:, 1])
+  results[key] = data
+  pickle.dump(results, open(f"results/data/database.pkl", "wb"))
   # return x_hist
 
 
