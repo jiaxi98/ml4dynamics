@@ -4,13 +4,25 @@
 defaults:
   - _self_
   - override hydra/launcher: joblib
-  - override hydra/job_logging: file_only
+  # - override hydra/job_logging: file_only
 
 # path to original working directory
 # hydra hijacks working directory by changing it to the current log directory,
 # so it's useful to have this path as a special variable
 # https://hydra.cc/docs/next/tutorials/basic/running_your_app/working_directory
 work_dir: ${hydra:runtime.cwd}
+
+hydra:
+  launcher:
+    # Configure joblib to run up to 4 jobs in parallel
+    n_jobs: 4
+    # Use parallel backend
+    backend: threading
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${hydra.job.num}
 
 # name of the run, accessed by loggers
 case: ks
@@ -21,7 +33,7 @@ sim:
   T: 400
   dt: .1
   L: 128
-  n: 1024
+  n: 512
   rx: 4
   rt: 1
   init_scale: 1.
@@ -45,7 +57,7 @@ train:
   is_global: False
   kernel_size: 3
   # NOTE: currently only support for local modeling
-  stencil_size: 5
+  stencil_size: 3
   input_features: ["u"]
   bins: 50
   subsample: 200

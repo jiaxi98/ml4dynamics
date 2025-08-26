@@ -800,7 +800,7 @@ def eval_a_posteriori(
     Specifically, randomly generated in the initial condition to simulate
     the ground truth trajectory, which is not in the whole dataset (with probability 0).
     """
-    n_sample = 2
+    n_sample = 10
     rng = random.PRNGKey(1000)
     res_fn, _ = res_int_fn(config_dict)
     L = model_fine.Lx
