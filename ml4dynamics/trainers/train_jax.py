@@ -1,12 +1,12 @@
 import os
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0, 1"
 import pickle
 import logging
 from functools import partial
 from time import time
 
 import hydra
+from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
 import jax
 
@@ -378,8 +378,14 @@ def main(cfg: DictConfig):
   else:
     batch_size = config.train.batch_size_local
     arch = "mlp"
+  # Handle both single-job and multirun modes for GPU selection
+  try:
+    gpu_index = HydraConfig.get().job.num
+  except:
+    gpu_index = 0  # Default to GPU 0 for single jobs
+  
   inputs, outputs, train_dataloader, test_dataloader, dataset, x_coords = utils.load_data(
-    config_dict, batch_size
+    config_dict, batch_size, gpu_index
   )
   log.info(f"Finished loading data in {time() - start:.2f}s")
   log.info(f"Problem type: {pde}")

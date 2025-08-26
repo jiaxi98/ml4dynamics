@@ -36,6 +36,7 @@ torch.set_default_dtype(torch.float64)
 def load_data(
   config_dict: ml_collections.ConfigDict,
   batch_size: int,
+  gpu_index: int = 0,
   num_workers: int = 16,
 ):
 
@@ -81,12 +82,21 @@ def load_data(
 
   if not config.train.is_global:
     _, model = create_fine_coarse_simulator(config_dict)
+    # Keep arrays as numpy arrays for augment_inputs processing
     inputs = np.array(
       augment_inputs(
         inputs, x_coords, pde, config.train.input_features,
         config.train.stencil_size, model
       )
     )
+  
+  available_devices = jax.devices()
+  device_index = gpu_index % len(available_devices)
+  target_device = available_devices[device_index]
+  
+  inputs = jax.device_put(inputs, device=target_device)
+  outputs = jax.device_put(outputs, device=target_device)
+  x_coords = jax.device_put(x_coords, device=target_device)
   # if mode == "torch":
   #   inputs = inputs.transpose(0, 3, 1, 2)
   #   outputs = outputs.transpose(0, 3, 1, 2)
@@ -106,6 +116,13 @@ def load_data(
   train_x, test_x, train_y, test_y = train_test_split(
     inputs, outputs, test_size=0.2, random_state=config.sim.seed
   )
+  
+  # Ensure arrays are writable (copy if readonly) before creating PyTorch tensors
+  train_x = np.array(train_x, copy=True)
+  test_x = np.array(test_x, copy=True)
+  train_y = np.array(train_y, copy=True)
+  test_y = np.array(test_y, copy=True)
+  
   train_dataset = TensorDataset(
     torch.tensor(train_x, dtype=torch.float64),
     torch.tensor(train_y, dtype=torch.float64)
@@ -172,10 +189,15 @@ def augment_inputs(
     raise Exception("Size of stencils must be odd")
   for i in range(stencil_size // 2):
     """NOTE: currently only support 1D KS with DN BC"""
-    tmp.append(jnp.roll(inputs, i + 1, axis=1))
-    tmp[-1] = tmp[-1].at[:, :i + 1].set(0)
-    tmp.append(jnp.roll(inputs, -(i + 1), axis=1))
-    tmp[-1] = tmp[-1].at[:, -i - 1:].set(0)
+    rolled_pos = jnp.roll(inputs, i + 1, axis=1)
+    # Create a copy to avoid readonly flag issues
+    rolled_pos = jnp.array(rolled_pos)
+    tmp.append(rolled_pos.at[:, :i + 1].set(0))
+    
+    rolled_neg = jnp.roll(inputs, -(i + 1), axis=1)
+    # Create a copy to avoid readonly flag issues
+    rolled_neg = jnp.array(rolled_neg)
+    tmp.append(rolled_neg.at[:, -i - 1:].set(0))
 
   return jnp.concatenate(tmp, axis=-1)
 
