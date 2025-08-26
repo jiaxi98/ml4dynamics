@@ -956,9 +956,12 @@ def eval_a_posteriori(
     results = pickle.load(f)
   
   key = config.case + config.sim.BC + str(config.sim.n) + str(config.sim.seed)
-  if key in results.keys() and ("s"+str(config.train.stencil_size)) in results[key]["method"]:
-    return
-  if key not in results.keys():
+  if key in results.keys():
+    if ("s"+str(config.train.stencil_size)) in results[key]["method"]:
+      return
+    else:
+      data = results[key]
+  else:
     data = {
       "method": [], "l2": [], "first moment": [], "second moment": [], "third moment": [],
       "first moment traj": [], "second moment traj": [], "third moment traj": [], "corr": []
