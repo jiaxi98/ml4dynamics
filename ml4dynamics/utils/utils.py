@@ -1009,14 +1009,12 @@ def eval_a_posteriori(
     # Save a posteriori metrics to results/aposteriori_metrics.pkl
     os.makedirs("results", exist_ok=True)
 
-    # Read current config to get filter_type, boundary condition, and stencil size
-    with open("config/ks.yaml", "r") as f:
-      config = yaml.safe_load(f)
-    bc = "pbc" if config["sim"]["BC"] == "periodic" else "dnbc"
-    r = config["sim"]["rx"]
-    s = config["sim"]["stencil_size"]
 
-    #Create compound key that includes BC, r and s
+    # Use Box(config_dict) to get current config values for key naming
+    config = Box(config_dict)
+    bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
+    r = config.sim.rx
+    s = config.sim.stencil_size
     key = f"{bc}_r{r}_s{s}"
 
     # Load existing a posteriori metrics or create new dict
