@@ -80,6 +80,17 @@ def create_box_filter(N1: int, N2: int, r: int, BC: str, s: int):
       res_op /= s / r  
     else:  # Dirichlet-Neumann - ignore for now
       raise Exception("Dirichlet-Neumann not implemented for r=8")
+
+  elif r == 16:
+    if BC == "periodic":
+      for i in range(N2):
+        start = i * r
+        for j in range(s):
+          idx = (start + j) % N1  # wrap around domain
+          res_op = res_op.at[i, idx].set(1)
+      res_op /= s / r  # normalize to preserve energy scale
+    else:  # Dirichlet-Neumann
+      raise Exception("Dirichlet-Neumann not implemented for r=16")
   
   return res_op
 

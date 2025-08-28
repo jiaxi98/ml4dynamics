@@ -8,10 +8,10 @@ import os
 
 # Default stencil sets for each r
 DEFAULT_STENCILS = {
-    2: [3, 5, 7, 9],
-    4: [5, 7, 9, 11],
-    8: [9, 11, 13, 15, 17, 19],
-    16: [21, 23, 25, 27, 29, 31, 33],
+  #  2: [3, 5, 7, 9],
+   # 4: [5, 7, 9, 11],
+  #  8: [9, 11, 13, 15, 17, 19],
+    16: [25, 27, 29, 31, 33, 35],
 }
 
 def run_command(cmd, gpus):
@@ -44,7 +44,8 @@ def main():
     args = parser.parse_args()
 
     # Which r values to run
-    rs = [2, 4, 8]
+    #rs = [2, 4, 8]
+    rs = []
     if args.include_r16:
         rs.append(16)
 
@@ -55,10 +56,10 @@ def main():
             print(f"Running sweep: N={args.n}, rx={r}, stencil_size={s}")
             print("="*60)
             # Generate dataset
-           # run_command([
-           #     "python", "ml4dynamics/dataset_utils/generate_ks.py",
-           #     f"sim.n={args.n}", f"sim.rx={r}", f"sim.stencil_size={s}"
-           # ], args.gpus)
+            run_command([
+                "python", "ml4dynamics/dataset_utils/generate_ks.py",
+                f"sim.n={args.n}", f"sim.rx={r}", f"sim.stencil_size={s}"
+            ], args.gpus)
             # Train model
             run_command([
                 "python", "ml4dynamics/trainers/train_jax.py",
