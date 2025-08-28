@@ -89,11 +89,11 @@ def load_data(
         config.train.stencil_size, model
       )
     )
-  
+
   available_devices = jax.devices()
   device_index = gpu_index % len(available_devices)
   target_device = available_devices[device_index]
-  
+
   inputs = jax.device_put(inputs, device=target_device)
   outputs = jax.device_put(outputs, device=target_device)
   x_coords = jax.device_put(x_coords, device=target_device)
@@ -116,13 +116,13 @@ def load_data(
   train_x, test_x, train_y, test_y = train_test_split(
     inputs, outputs, test_size=0.2, random_state=config.sim.seed
   )
-  
+
   # Ensure arrays are writable (copy if readonly) before creating PyTorch tensors
   train_x = np.array(train_x, copy=True)
   test_x = np.array(test_x, copy=True)
   train_y = np.array(train_y, copy=True)
   test_y = np.array(test_y, copy=True)
-  
+
   train_dataset = TensorDataset(
     torch.tensor(train_x, dtype=torch.float64),
     torch.tensor(train_y, dtype=torch.float64)
@@ -146,11 +146,10 @@ def load_data(
 
 
 def augment_inputs(
-  inputs: jnp.ndarray, x_coords: jnp.ndarray,
-  pde: str, input_features: list, stencil_size: int, model
+  inputs: jnp.ndarray, x_coords: jnp.ndarray, pde: str, input_features: list,
+  stencil_size: int, model
 ):
   """This function is used both at loading the data and inference time"""
-
   """stach together all input features"""
   tmp = []
   if pde == "ks":
@@ -182,7 +181,6 @@ def augment_inputs(
       tmp.append(dpsidy)
       tmp.append(-dpsidx)
   inputs = jnp.concatenate(tmp, axis=-1)
-
   """stack together all stencils"""
   tmp = [inputs]
   if stencil_size % 2 != 1:
@@ -193,7 +191,7 @@ def augment_inputs(
     # Create a copy to avoid readonly flag issues
     rolled_pos = jnp.array(rolled_pos)
     tmp.append(rolled_pos.at[:, :i + 1].set(0))
-    
+
     rolled_neg = jnp.roll(inputs, -(i + 1), axis=1)
     # Create a copy to avoid readonly flag issues
     rolled_neg = jnp.array(rolled_neg)
@@ -401,14 +399,18 @@ def prepare_unet_train_state(
       if is_global:
         input_features = 1
       else:
-        input_features = len(config.train.input_features) * config.train.stencil_size
+        input_features = len(
+          config.train.input_features
+        ) * config.train.stencil_size
       output_features = 1
       DIM = 2
     elif config.case == "ks":
       if is_global:
         input_features = 1
       else:
-        input_features = len(config.train.input_features) * config.train.stencil_size
+        input_features = len(
+          config.train.input_features
+        ) * config.train.stencil_size
       output_features = 1
       DIM = 1
   if load_dict:
@@ -939,7 +941,9 @@ def eval_a_posteriori(
       np.mean(
         third_moment_list[~np.isnan(third_moment_list).any(axis=1)], axis=0
       ), ", ",
-      np.std(third_moment_list[~np.isnan(third_moment_list).any(axis=1)], axis=0)
+      np.std(
+        third_moment_list[~np.isnan(third_moment_list).any(axis=1)], axis=0
+      )
     )
   # viz_utils.plot_stats_aux(
   #   np.arange(inputs.shape[0]) * model.dt,
@@ -954,17 +958,24 @@ def eval_a_posteriori(
 
   with open(f"results/data/database.pkl", "rb") as f:
     results = pickle.load(f)
-  
+
   key = config.case + config.sim.BC + str(config.sim.n) + str(config.sim.seed)
   if key in results.keys():
-    if ("s"+str(config.train.stencil_size)) in results[key]["method"]:
+    if ("s" + str(config.train.stencil_size)) in results[key]["method"]:
       return
     else:
       data = results[key]
   else:
     data = {
-      "method": [], "l2": [], "first moment": [], "second moment": [], "third moment": [],
-      "first moment traj": [], "second moment traj": [], "third moment traj": [], "corr": []
+      "method": [],
+      "l2": [],
+      "first moment": [],
+      "second moment": [],
+      "third moment": [],
+      "first moment traj": [],
+      "second moment traj": [],
+      "third moment traj": [],
+      "corr": []
     }
     data["method"] += ["baseline"] * n_sample
     data["l2"] += list(np.array(l2_list)[:, 0])
@@ -975,7 +986,7 @@ def eval_a_posteriori(
     data["second moment traj"] += list(np.array(second_moment_traj_list)[:, 0])
     data["third moment traj"] += list(np.array(third_moment_traj_list)[:, 0])
     data["corr"] += list(np.array(corr1)[:, 0])
-  data["method"] += ["s"+str(config.train.stencil_size)] * n_sample
+  data["method"] += ["s" + str(config.train.stencil_size)] * n_sample
   data["l2"] += list(np.array(l2_list)[:, 1])
   data["first moment"] += list(np.array(first_moment_list)[:, 1])
   data["second moment"] += list(np.array(second_moment_list)[:, 1])

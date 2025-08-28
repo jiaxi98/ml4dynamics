@@ -1,14 +1,15 @@
 import os
+
 os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-import pickle
 import logging
+import pickle
 from functools import partial
 from time import time
 
 import hydra
+import jax
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import DictConfig, OmegaConf
-import jax
 
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
@@ -111,24 +112,28 @@ def main(cfg: DictConfig):
 
     if mode == "ae" and not _global:
       return
-    
+
     # Include seed in checkpoint name for uniqueness
     seed = config.sim.seed
-    
+
     # Use work_dir for checkpoint path
     import os
     if 'work_dir' in config:
       ckpt_dir = os.path.join(config['work_dir'], f"ckpts/{pde}")
     else:
       ckpt_dir = f"ckpts/{pde}"
-    
+
     # Create checkpoint directory if it doesn't exist
     os.makedirs(ckpt_dir, exist_ok=True)
-    
+
     if mode == "ae":
-      ckpt_path = os.path.join(ckpt_dir, f"{dataset}_{mode}_{arch}_seed{seed}.pkl")
+      ckpt_path = os.path.join(
+        ckpt_dir, f"{dataset}_{mode}_{arch}_seed{seed}.pkl"
+      )
     else:
-      ckpt_path = os.path.join(ckpt_dir, f"{dataset}_{config.train.sgs}_{mode}_{arch}_seed{seed}.pkl")
+      ckpt_path = os.path.join(
+        ckpt_dir, f"{dataset}_{config.train.sgs}_{mode}_{arch}_seed{seed}.pkl"
+      )
     # load_dict = ckpt_path
     # if not os.path.exists(load_dict):
     #   """TODO: no architecture check for the models"""
@@ -162,10 +167,11 @@ def main(cfg: DictConfig):
       # add tangent-space regularization
       lambda_ = config.train.lambda_
       ae_train_state, _ = utils.prepare_unet_train_state(
-        config_dict, 
-        os.path.join(ckpt_dir if 'ckpt_dir' in locals() else f"ckpts/{pde}", 
-                     f"{dataset}_ae_unet_seed{config.sim.seed}.pkl"), 
-        True, False
+        config_dict,
+        os.path.join(
+          ckpt_dir if 'ckpt_dir' in locals() else f"ckpts/{pde}",
+          f"{dataset}_ae_unet_seed{config.sim.seed}.pkl"
+        ), True, False
       )
       ae_fn = partial(
         ae_train_state.apply_fn_with_bn, {
@@ -364,7 +370,7 @@ def main(cfg: DictConfig):
 
   # Convert OmegaConf to dict for compatibility with existing code
   config_dict = OmegaConf.to_container(cfg, resolve=True)
-  
+
   # load dataset
   config = cfg
   pde = config.case
@@ -383,7 +389,7 @@ def main(cfg: DictConfig):
     gpu_index = HydraConfig.get().job.num
   except:
     gpu_index = 0  # Default to GPU 0 for single jobs
-  
+
   inputs, outputs, train_dataloader, test_dataloader, dataset, x_coords = utils.load_data(
     config_dict, batch_size, gpu_index
   )
