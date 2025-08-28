@@ -97,9 +97,9 @@ for seed in seeds:
                 solid_capstyle="butt", zorder=4
             )
             ax.text(
-                0.005, mean_val + y_span * 0.01,
+                i, mean_val + y_span * 0.01,
                 f"{mean_val:.2f}",
-                transform=ax.get_yaxis_transform(),
+                # transform=ax.get_yaxis_transform(),
                 ha="left", va="bottom",
                 color="black", fontsize=9, clip_on=False
             )
