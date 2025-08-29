@@ -19,7 +19,8 @@ from tqdm import tqdm
 from ml4dynamics.utils import utils
 
 
-@hydra.main(version_base=None, config_path="../../config", config_name="ks")
+#@hydra.main(version_base=None, config_path="../../config", config_name="ks")
+@hydra.main(version_base=None, config_path="../../config", config_name="heat1d")
 def main(cfg: DictConfig):
 
   # Get logger
@@ -283,7 +284,7 @@ def main(cfg: DictConfig):
     inputs_ = inputs
     outputs_ = outputs
     type_ = None
-    if pde == "ks":
+    if pde == "ks" or pde == "heat1d":
       dim = 1
       if config.sim.BC == "Dirichlet-Neumann":
         type_ = "pad"
@@ -350,6 +351,7 @@ def main(cfg: DictConfig):
     if not _global:
       forward_fn = partial(_forward_fn, is_aug=True)
     utils.eval_a_priori(
+      config_dict=config_dict,
       forward_fn=forward_fn,
       train_dataloader=train_dataloader,
       test_dataloader=test_dataloader,

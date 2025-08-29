@@ -68,6 +68,12 @@ def load_data(
       r = config.sim.rx
       s = config.sim.stencil_size
       dataset = f"{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}"
+    elif pde == "heat1d":
+      bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
+      gamma = config.sim.gamma
+      r = config.sim.rx
+      s = config.sim.stencil_size
+      dataset = f"{bc}_heat1d_gamma{gamma:.2f}_n{case_num}_r{r}_s{s}"
   # Use work_dir if available (from Hydra config) to handle directory changes
   import os
   if 'work_dir' in config:
@@ -251,6 +257,20 @@ def create_fine_coarse_simulator(config_dict: ml_collections.ConfigDict):
       init_scale=init_scale,
       rng=rng,
     )
+
+  elif config.case == "heat1d":
+    gamma = config.sim.gamma
+    L = config.sim.L
+    n = config.sim.n
+    rx = config.sim.rx
+    rt = config.sim.rt if "rt" in config.sim else 1
+    model_fine = dynamics.Heat1D(
+        L=L, N=n, T=T, dt=dt, gamma=gamma
+    )
+    model_coarse = dynamics.Heat1D(
+        L=L, N=n // rx, T=T, dt=dt * rt, gamma=gamma
+    )
+
   elif config.case == "ns_hit":
     model_fine = dynamics.ns_hit(
       L=L * np.pi,
@@ -389,6 +409,9 @@ def prepare_unet_train_state(
     elif config.case == "ks":
       if is_global:
         input_features = 1
+    elif config.case == "heat1d":
+      if is_global:
+        input_features = 1
       else:
         input_features = len(config.train.input_features) * config.sim.stencil_size
       output_features = 1
@@ -418,7 +441,7 @@ def prepare_unet_train_state(
     rng1, rng2 = random.split(rng)
     init_rngs = {'params': rng1, 'dropout': rng2}
     if not load_dict:
-      if config.case == "ks":
+      if config.case == "ks" or config.case == "heat1d":
         # init 1D UNet
         params = unet.init(
           init_rngs, jnp.ones([1, nx, input_features], dtype=jnp.float64)
@@ -526,6 +549,7 @@ def data_stratification(config_dict: ml_collections.ConfigDict):
 
 
 def eval_a_priori(
+  config_dict: ml_collections.ConfigDict,
   forward_fn: callable,
   train_dataloader: DataLoader,
   test_dataloader: DataLoader,
@@ -561,18 +585,18 @@ def eval_a_priori(
   # Save train_loss to results/train_losses.pkl
   os.makedirs("results", exist_ok=True)
 
-  # Read current config to get BC, r and s
-  with open("config/ks.yaml", "r") as f:
-    config = yaml.safe_load(f)
-  bc = "pbc" if config["sim"]["BC"] == "periodic" else "dnbc"
-  r = config["sim"]["rx"]
-  s = config["sim"]["stencil_size"]
-  
+  # Use Box(config_dict) to get current config values for key naming
+  config = Box(config_dict)
+  bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
+  r = config.sim.rx
+  s = config.sim.stencil_size
+
   #Create compound key that includes BC, r and s
   key = f"{bc}_r{r}_s{s}"
 
   #Load exisiting train losses or initialize a new dictionary
-  train_losses_path = "results/train_losses.pkl"
+  #train_losses_path = "results/train_losses.pkl"
+  train_losses_path = "results/heat1d_train_losses.pkl"
   if os.path.exists(train_losses_path):
     with open(train_losses_path, "rb") as f:
       train_losses = pickle.load(f)
@@ -679,6 +703,8 @@ def eval_a_posteriori(
       iter_ = model.CN_FEM
       if config.sim.BC == "Dirichlet-Neumann":
         type_ = "pad"
+    elif config.case == "heat1d":
+      iter_ = model.CN
     if config.train.sgs == "fine_correction":
       res_fn, int_fn = res_int_fn(config)
       run_simulation = partial(
@@ -874,7 +900,8 @@ def eval_a_posteriori(
         #   random.uniform(rng) * jnp.sin(16 * jnp.pi * x / 128)
         r0 = random.uniform(key) * 20 + 44
         u0 = jnp.exp(-(x - r0)**2 / r0**2 * 4)
-      model_fine.run_simulation(u0, model_fine.CN_FEM)
+      #model_fine.run_simulation(u0, model_fine.CN_FEM)
+      model_fine.run_simulation(u0, model_fine.CN)
       truth = jax.vmap(res_fn)(model_fine.x_hist)[..., 0]
       model.run_simulation(res_fn(u0)[..., 0], iter_)
       x_hist = run_simulation(res_fn(u0))
@@ -940,7 +967,7 @@ def eval_a_posteriori(
     corr2 = np.array(corr2)
 
     # Modify fig_name for KS simulations to include r and s
-    if config.case == "ks":
+    if config.case == "ks" or config.case == "heat1d":
       r = config.sim.rx
       s = config.sim.stencil_size
       fig_name_with_params = f"{fig_name}_r{r}_s{s}"
@@ -1018,7 +1045,8 @@ def eval_a_posteriori(
     key = f"{bc}_r{r}_s{s}"
 
     # Load existing a posteriori metrics or create new dict
-    aposteriori_path = "results/aposteriori_metrics.pkl"
+   # aposteriori_path = "results/aposteriori_metrics.pkl"
+    aposteriori_path = "results/heat1d_aposteriori_metrics.pkl"
     if os.path.exists(aposteriori_path):
       with open(aposteriori_path, "rb") as f:
         aposteriori_metrics = pickle.load(f)

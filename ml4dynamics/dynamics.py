@@ -1323,3 +1323,46 @@ class ns_channel(dynamics):
     #   print("Velocity field is not divergence free!!!")
 
     return u, v, p
+
+class Heat1D(dynamics):
+  r"""1D Heat Equation: u_t = gamma * u_xx"""
+
+  def __init__(
+    self,
+    model_type='Heat1D',
+    L=10.0,
+    N=256,
+    T=5.0,
+    dt=0.001,
+    gamma=0.05,
+    tol=1e-8,
+    init_scale=1e-2,
+    tv_scale=1e-8,
+    rng=random.PRNGKey(0),
+    plot=False,
+    BC="periodic"
+  ):
+    super().__init__(model_type, N, T, dt, tol, init_scale, tv_scale, rng, plot)
+    self.Lx = L
+    self.gamma = gamma
+    self.dx = L / N
+    self.assembly_matrix()
+
+  def assembly_matrix(self):
+    N = self.N
+    dx = self.dx
+    # Periodic BC
+    L2 = jnp.roll(jnp.eye(N), 1, axis=1) + jnp.roll(jnp.eye(N), -1, axis=1) - 2 * jnp.eye(N)
+    L2 = L2 / dx**2
+    self.L2 = L2
+
+  def f(self, t, x):
+    # Forward Euler RHS
+    return self.gamma * self.L2 @ x
+
+  def CN(self, x):
+    # Crank-Nicolson time step
+    dt = self.dt
+    A = jnp.eye(self.N) - 0.5 * dt * self.gamma * self.L2
+    B = jnp.eye(self.N) + 0.5 * dt * self.gamma * self.L2
+    return solve(A, B @ x)

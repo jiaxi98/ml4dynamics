@@ -1,0 +1,44 @@
+# specify here default sim configuration
+defaults:
+- _self_
+- override hydra/launcher: joblib
+- override hydra/job_logging: default #file_only
+
+case: heat1d
+work_dir: ${hydra:runtime.cwd}
+
+sim:
+  gamma: 0.05
+  L: 10.0
+  n: 256
+  T: 5.0
+  dt: 0.001
+  rx: 4
+  rt: 1
+  seed: 42
+  case_num: 10
+  BC: periodic
+  stencil_size: 5
+  warmup: 0
+  patience: 5
+  writeInterval: 2
+
+train:
+  stratify: false
+  sgs: correction
+  is_global: True
+  kernel_size: 3
+  bins: 50
+  subsample: 200
+  mode: regression
+  linear: true
+  n_g: 1
+  lambda_: 1
+  lr: 0.01
+  epochs_global: 400
+  decay_global: 100
+  batch_size_global: 200
+  epochs_local: 800
+  decay_local: 200
+  batch_size_local: 10000
+  save: 100

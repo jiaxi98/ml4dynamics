@@ -99,7 +99,7 @@ def res_int_fn(config_dict: ml_collections.ConfigDict):
 
   config = Box(config_dict)
   r = config.sim.rx
-  if config.case == "ks":
+  if config.case == "ks" or config.case == "heat1d":
     BC = config.sim.BC
     s = config.sim.stencil_size  # Get stencil size from config
     
