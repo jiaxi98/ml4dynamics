@@ -1349,6 +1349,11 @@ class Heat1D(dynamics):
     self.assembly_matrix()
 
   def assembly_matrix(self):
+    '''
+    This make a matrix that computes the finite-difference Laplacian operator matrix 
+    (the discrete 1D second derivative operator) with periodic boundary conditions.
+    '''
+
     N = self.N
     dx = self.dx
     # Periodic BC

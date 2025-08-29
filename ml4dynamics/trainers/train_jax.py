@@ -19,8 +19,7 @@ from tqdm import tqdm
 from ml4dynamics.utils import utils
 
 
-#@hydra.main(version_base=None, config_path="../../config", config_name="ks")
-@hydra.main(version_base=None, config_path="../../config", config_name="heat1d")
+@hydra.main(version_base=None, config_path="../../config")
 def main(cfg: DictConfig):
 
   # Get logger

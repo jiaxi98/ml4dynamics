@@ -594,9 +594,14 @@ def eval_a_priori(
   #Create compound key that includes BC, r and s
   key = f"{bc}_r{r}_s{s}"
 
-  #Load exisiting train losses or initialize a new dictionary
-  #train_losses_path = "results/train_losses.pkl"
-  train_losses_path = "results/heat1d_train_losses.pkl"
+
+  # Modular train_losses_path based on PDE type
+  if config.case == "ks":
+    train_losses_path = "results/train_losses.pkl"
+  elif config.case == "heat1d":
+    train_losses_path = "results/heat1d_train_losses.pkl"
+  else:
+    train_losses_path = "results/train_losses.pkl"
   if os.path.exists(train_losses_path):
     with open(train_losses_path, "rb") as f:
       train_losses = pickle.load(f)
@@ -1045,8 +1050,12 @@ def eval_a_posteriori(
     key = f"{bc}_r{r}_s{s}"
 
     # Load existing a posteriori metrics or create new dict
-   # aposteriori_path = "results/aposteriori_metrics.pkl"
-    aposteriori_path = "results/heat1d_aposteriori_metrics.pkl"
+    if config.case == "ks":
+      aposteriori_path = "results/aposteriori_metrics.pkl"
+    elif config.case == "heat1d":
+      aposteriori_path = "results/heat1d_aposteriori_metrics.pkl"
+    else:
+      aposteriori_path = "results/aposteriori_metrics.pkl"
     if os.path.exists(aposteriori_path):
       with open(aposteriori_path, "rb") as f:
         aposteriori_metrics = pickle.load(f)
