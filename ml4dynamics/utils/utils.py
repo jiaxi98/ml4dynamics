@@ -33,6 +33,45 @@ jax.config.update("jax_enable_x64", True)
 torch.set_default_dtype(torch.float64)
 
 
+def calculate_strip_widths(u: np.ndarray, min_prominence: float = 0.3) -> tuple:
+  """
+  Calculate the average width of strip patterns in a 1D velocity field.
+  
+  Each strip is defined as a local maximum bounded by two local minima.
+  Width is the spatial distance between the bounding minima.
+  
+  Args:
+    u: 1D numpy array of velocity field values
+    min_prominence: Minimum prominence for peak detection (filters noise)
+  
+  Returns:
+    strip_widths: Array of individual strip widths
+  """
+  from scipy.signal import find_peaks
+  
+  # Find local maxima and minima
+  maxima, max_props = find_peaks(u, prominence=min_prominence)
+  minima, min_props = find_peaks(-u, prominence=min_prominence)
+  
+  strip_widths = []
+  
+  # For each maximum, find bounding minima
+  for max_idx in maxima:
+    # Find left minimum (largest minimum index < max_idx)
+    left_mins = minima[minima < max_idx]
+    left_min = left_mins[-1] if len(left_mins) > 0 else 0
+    
+    # Find right minimum (smallest minimum index > max_idx)
+    right_mins = minima[minima > max_idx]
+    right_min = right_mins[0] if len(right_mins) > 0 else len(u) - 1
+    
+    # Calculate strip width
+    width = right_min - left_min
+    strip_widths.append(width)
+  
+  return np.array(strip_widths)
+
+
 def load_data(
   config_dict: ml_collections.ConfigDict,
   batch_size: int,
@@ -79,6 +118,8 @@ def load_data(
     else:
       outputs = h5f["data"][f"outputs_{sgs}"][()]
     x_coords = h5f["data"]["x_coords"][()]
+
+  calculate_strip_widths(inputs[1000, ..., 0])
 
   if not config.train.is_global:
     _, model = create_fine_coarse_simulator(config_dict)
