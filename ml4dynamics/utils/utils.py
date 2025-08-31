@@ -33,7 +33,7 @@ jax.config.update("jax_enable_x64", True)
 torch.set_default_dtype(torch.float64)
 
 
-def calculate_strip_widths(u: np.ndarray, min_prominence: float = 0.3) -> tuple:
+def calculate_strip_widths(u: jnp.ndarray, min_prominence: float = 0.3) -> tuple:
   """
   Calculate the average width of strip patterns in a 1D velocity field.
   
@@ -45,13 +45,15 @@ def calculate_strip_widths(u: np.ndarray, min_prominence: float = 0.3) -> tuple:
     min_prominence: Minimum prominence for peak detection (filters noise)
   
   Returns:
-    strip_widths: Array of individual strip widths
+    strip_widths: list of individual strip widths
   """
   from scipy.signal import find_peaks
   
   # Find local maxima and minima
   maxima, max_props = find_peaks(u, prominence=min_prominence)
-  minima, min_props = find_peaks(-u, prominence=min_prominence)
+  # NOTE: no need to set prominence for minima detection to avoid large
+  # strip width caused by a shallow valley
+  minima, min_props = find_peaks(-u)
   
   strip_widths = []
   
@@ -69,7 +71,7 @@ def calculate_strip_widths(u: np.ndarray, min_prominence: float = 0.3) -> tuple:
     width = right_min - left_min
     strip_widths.append(width)
   
-  return np.array(strip_widths)
+  return strip_widths
 
 
 def load_data(
@@ -119,7 +121,22 @@ def load_data(
       outputs = h5f["data"][f"outputs_{sgs}"][()]
     x_coords = h5f["data"]["x_coords"][()]
 
-  calculate_strip_widths(inputs[1000, ..., 0])
+  # calculate the avg width of the strip patterns
+  strip_widths = []
+  for _ in range(1000, inputs.shape[0] // 10):
+    strip_widths += calculate_strip_widths(inputs[_,..., 0])
+    if max(calculate_strip_widths(inputs[_,..., 0])) > 35:
+      print(f"strip width: {max(calculate_strip_widths(inputs[_,..., 0]))}")
+      print(calculate_strip_widths(inputs[_,..., 0]))
+      plt.plot(inputs[_,..., 0])
+      plt.savefig("results/fig/strip_widths.png")
+      breakpoint()
+  strip_widths = np.array(strip_widths)
+  strip_widths = strip_widths[np.array(strip_widths) < 50]
+  print(f"avg width: {np.mean(strip_widths)}")
+  plt.hist(strip_widths, bins=np.arange(np.min(strip_widths), np.max(strip_widths), 1), density=True)
+  plt.savefig("results/fig/strip_widths.png")
+  plt.close()
 
   if not config.train.is_global:
     _, model = create_fine_coarse_simulator(config_dict)
