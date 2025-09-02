@@ -409,6 +409,10 @@ def prepare_unet_train_state(
     elif config.case == "ks":
       if is_global:
         input_features = 1
+      else:
+        input_features = len(config.train.input_features) * config.sim.stencil_size
+      output_features = 1
+      DIM = 1
     elif config.case == "heat1d":
       if is_global:
         input_features = 1

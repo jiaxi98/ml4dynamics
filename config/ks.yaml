@@ -44,8 +44,9 @@ train:
   # sgs: filter
   sgs: correction
   kernel_size: 3
-  is_global: True
+  is_global: false
   # input_features: ["u"]
+  input_features: ["u", "u_x", "u_xx", "x"]
   # input: 4
   bins: 50
   subsample: 200

@@ -8,9 +8,9 @@ import os
 
 # Default stencil sets for each r
 DEFAULT_STENCILS = {
-  #  2: [3, 5, 7, 9],
-   # 4: [5, 7, 9, 11],
-  #  8: [9, 11, 13, 15, 17, 19],
+    2: [3, 5, 7, 9],
+    4: [5, 7, 9, 11],
+    8: [9, 11, 13, 15, 17, 19],
     16: [25, 27, 29, 31, 33, 35],
 }
 
@@ -41,11 +41,18 @@ def main():
         "--include-r16", action="store_true",
         help="Also run r=16 (only meaningful if n=2048)"
     )
+    parser.add_argument(
+        "--config-name", type=str, default="ks",
+        help="Hydra config name to use (e.g. ks, heat1d)"
+    )
+    parser.add_argument(
+        "--generate", action="store_true",
+        help="Also run dataset generation step before training"
+    )
     args = parser.parse_args()
 
     # Which r values to run
-    #rs = [2, 4, 8]
-    rs = []
+    rs = [2, 4, 8]
     if args.include_r16:
         rs.append(16)
 
@@ -53,16 +60,19 @@ def main():
         stencils = DEFAULT_STENCILS[r]
         for s in stencils:
             print("="*60)
-            print(f"Running sweep: N={args.n}, rx={r}, stencil_size={s}")
+            print(f"Running sweep: N={args.n}, rx={r}, stencil_size={s}, config={args.config_name}")
             print("="*60)
-            # Generate dataset
-            run_command([
-                "python", "ml4dynamics/dataset_utils/generate_ks.py",
-                f"sim.n={args.n}", f"sim.rx={r}", f"sim.stencil_size={s}"
-            ], args.gpus)
+            # Generate dataset if requested
+            if args.generate:
+                run_command([
+                    "python", f"ml4dynamics/dataset_utils/generate_{args.config_name}.py",
+                    "--config-name", args.config_name,
+                    f"sim.n={args.n}", f"sim.rx={r}", f"sim.stencil_size={s}"
+                ], args.gpus)
             # Train model
             run_command([
                 "python", "ml4dynamics/trainers/train_jax.py",
+                "--config-name", args.config_name,
                 f"sim.n={args.n}", f"sim.rx={r}", f"sim.stencil_size={s}"
             ], args.gpus)
 
