@@ -166,7 +166,8 @@ def main(cfg: DictConfig):
   # Use Hydra's working directory for output
   output_dir = os.path.join(cfg.work_dir, "data/ks")
   os.makedirs(output_dir, exist_ok=True)
-  filename = f"{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}.h5"
+  mode_str = "global" if config.train.is_global else "local"
+  filename = f"{mode_str}_{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}.h5"
   filepath = os.path.join(output_dir, filename)
   with h5py.File(filepath, "w") as f:
     metadata_group = f.create_group("metadata")

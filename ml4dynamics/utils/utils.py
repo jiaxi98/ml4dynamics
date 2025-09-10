@@ -67,7 +67,8 @@ def load_data(
       c = config.sim.c
       r = config.sim.rx
       s = config.sim.stencil_size
-      dataset = f"{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}"
+      mode_str = "global" if config.train.is_global else "local"
+      dataset = f"{mode_str}_{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}"
     elif pde == "heat1d":
       bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
       gamma = config.sim.gamma
@@ -909,8 +910,12 @@ def eval_a_posteriori(
         #   random.uniform(rng) * jnp.sin(16 * jnp.pi * x / 128)
         r0 = random.uniform(key) * 20 + 44
         u0 = jnp.exp(-(x - r0)**2 / r0**2 * 4)
-      #model_fine.run_simulation(u0, model_fine.CN_FEM)
-      model_fine.run_simulation(u0, model_fine.CN)
+
+      if config.case == "ks":
+        model_fine.run_simulation(u0, model_fine.CN_FEM)
+      else:
+        model_fine.run_simulation(u0, model_fine.CN)
+        
       truth = jax.vmap(res_fn)(model_fine.x_hist)[..., 0]
       model.run_simulation(res_fn(u0)[..., 0], iter_)
       x_hist = run_simulation(res_fn(u0))
@@ -1055,9 +1060,11 @@ def eval_a_posteriori(
 
     # Load existing a posteriori metrics or create new dict
     if config.case == "ks":
-      aposteriori_path = "results/aposteriori_metrics.pkl"
+      mode_str = "global" if config.train.is_global else "local"
+      aposteriori_path = f"results/aposteriori_{mode_str}_metrics.pkl"
     elif config.case == "heat1d":
-      aposteriori_path = "results/heat1d_aposteriori_metrics.pkl"
+      mode_str = "global" if config.train.is_global else "local"
+      aposteriori_path = f"results/heat1d_aposteriori_{mode_str}_metrics.pkl"
     else:
       aposteriori_path = "results/aposteriori_metrics.pkl"
     if os.path.exists(aposteriori_path):

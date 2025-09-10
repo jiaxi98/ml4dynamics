@@ -22,10 +22,10 @@ sim:
   dt: .1
   L: 128
   n: 1024
-  rx: 2
+  rx: 4
   rt: 1
   init_scale: 1.
-  stencil_size: 3
+  stencil_size: 5
   # BC: Dirichlet-Neumann
   BC: periodic
   seed: 123
@@ -45,8 +45,8 @@ train:
   sgs: correction
   kernel_size: 3
   is_global: false
-  # input_features: ["u"]
-  input_features: ["u", "u_x", "u_xx", "x"]
+  input_features: ["u"]
+  # input_features: ["u", "u_x", "u_xx", "x"]
   # input: 4
   bins: 50
   subsample: 200

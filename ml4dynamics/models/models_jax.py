@@ -50,9 +50,14 @@ class MLP(nn.Module):
     x = nn.Dense(self.hidden_dim, param_dtype=self.dtype)(x)
     x = non_linear(x)
     x = nn.Dense(self.output_dim, param_dtype=self.dtype)(x)
+   # y = x + nn.Dense(self.output_dim, param_dtype=self.dtype)(
+   #   inputs.reshape(inputs.shape[0], -1)
+   # )
+   # return y - jnp.mean(y, axis=1, keepdims=True) #reduce 1st moment error
     return x + nn.Dense(self.output_dim, param_dtype=self.dtype)(
       inputs.reshape(inputs.shape[0], -1)
     )
+
 
 
 """cVAE model definitions."""
