@@ -163,11 +163,12 @@ def main(cfg: DictConfig):
 
   r = config.sim.rx
   s = config.sim.stencil_size
+  n = config.sim.n
   # Use Hydra's working directory for output
   output_dir = os.path.join(cfg.work_dir, "data/ks")
   os.makedirs(output_dir, exist_ok=True)
   mode_str = "global" if config.train.is_global else "local"
-  filename = f"{mode_str}_{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}.h5"
+  filename = f"{mode_str}_n{n}_{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}.h5"
   filepath = os.path.join(output_dir, filename)
   with h5py.File(filepath, "w") as f:
     metadata_group = f.create_group("metadata")

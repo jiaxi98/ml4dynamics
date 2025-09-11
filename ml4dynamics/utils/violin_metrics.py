@@ -8,7 +8,7 @@ import re
 
 if __name__ == "__main__":
     # Load aposteriori_metrics.pkl
-    filename = "results/aposteriori_metrics.pkl"
+    filename = "results/aposteriori_local_metrics.pkl"
     with open(filename, "rb") as f:
         metrics = pickle.load(f)
 
@@ -46,11 +46,6 @@ if __name__ == "__main__":
                 data = np.array(metrics[key][metric_name])  # shape (num_samples, 2)
                 baseline = data[:, 0]
                 ours = data[:, 1]
-
-                # Only plot values in [-1, 1] for third_moment_list because there is an annoying outlier
-                if metric_name == "third_moment_list":
-                    baseline = baseline[(baseline >= -1) & (baseline <= 1)]
-                    ours = ours[(ours >= -1) & (ours <= 1)]
 
                 for val in baseline:
                     plot_data.append({"method": "baseline", "error": val, "stencil_size": s})

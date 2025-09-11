@@ -67,8 +67,9 @@ def load_data(
       c = config.sim.c
       r = config.sim.rx
       s = config.sim.stencil_size
+      n = config.sim.n
       mode_str = "global" if config.train.is_global else "local"
-      dataset = f"{mode_str}_{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}"
+      dataset = f"{mode_str}_n{n}_{bc}_nu{nu:.1f}_c{c:.1f}_n{case_num}_r{r}_s{s}"
     elif pde == "heat1d":
       bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
       gamma = config.sim.gamma
@@ -595,14 +596,17 @@ def eval_a_priori(
   bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
   r = config.sim.rx
   s = config.sim.stencil_size
+  n = config.sim.n
+  
 
   #Create compound key that includes BC, r and s
-  key = f"{bc}_r{r}_s{s}"
+  key = f"n{n}_{bc}_r{r}_s{s}"
 
 
   # Modular train_losses_path based on PDE type
   if config.case == "ks":
-    train_losses_path = "results/train_losses.pkl"
+    mode_str = "global" if config.train.is_global else "local"
+    train_losses_path = f"results/train_losses_{mode_str}.pkl"
   elif config.case == "heat1d":
     train_losses_path = "results/heat1d_train_losses.pkl"
   else:
@@ -1056,7 +1060,8 @@ def eval_a_posteriori(
     bc = "pbc" if config.sim.BC == "periodic" else "dnbc"
     r = config.sim.rx
     s = config.sim.stencil_size
-    key = f"{bc}_r{r}_s{s}"
+    n = config.sim.n
+    key = f"n{n}_{bc}_r{r}_s{s}"
 
     # Load existing a posteriori metrics or create new dict
     if config.case == "ks":
@@ -1067,6 +1072,7 @@ def eval_a_posteriori(
       aposteriori_path = f"results/heat1d_aposteriori_{mode_str}_metrics.pkl"
     else:
       aposteriori_path = "results/aposteriori_metrics.pkl"
+      
     if os.path.exists(aposteriori_path):
       with open(aposteriori_path, "rb") as f:
         aposteriori_metrics = pickle.load(f)
